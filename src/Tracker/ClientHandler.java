@@ -24,10 +24,14 @@ class ClientHandler implements Runnable {
         try (ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
              ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream())) {
 
-            Object obj = ois.readObject();
-            if (obj instanceof Message) {
-                Message msg = (Message) obj;
-                handleMessage(msg, oos);
+            // Accepting peer messages until peer sends "Exit" message
+            //TODO handle peer "Exit" message
+            while(true) {
+                Object obj = ois.readObject();
+                if (obj instanceof Message) {
+                    Message msg = (Message) obj;
+                    handleMessage(msg, oos);
+                }
             }
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Error handling client: " + e.getMessage());

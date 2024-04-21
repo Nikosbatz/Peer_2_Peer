@@ -55,6 +55,7 @@ public class Peer {
     public static void main(String[] args) {
         try {
             Peer peer = new Peer("localhost", 1111);
+
             peer.registerWithTracker("peer1", Arrays.asList("file1.txt", "file2.txt"));
             peer.listFiles();
             peer.login("user1", "pass123");

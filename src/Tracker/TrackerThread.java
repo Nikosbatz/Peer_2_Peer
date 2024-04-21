@@ -8,6 +8,7 @@ public class TrackerThread implements Runnable{
 
 
     public TrackerThread(Socket client){
+
         this.client = client;
     }
 
