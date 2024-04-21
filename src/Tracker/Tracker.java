@@ -1,30 +1,32 @@
 package Tracker;
 
-import java.io.IOException;
-import java.net.ServerSocket;
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.*;
+import java.util.*;
 
 public class Tracker {
+    private ServerSocket serverSocket;
+    private ConcurrentHashMap<String, PeerInfo> peers = new ConcurrentHashMap<>();
 
+    public Tracker(int port) throws IOException {
+        serverSocket = new ServerSocket(port);
+        System.out.println("Tracker running on port " + port);
+    }
 
-
-    public static void main(String[] args){
-
-        System.out.println("Server running...");
-
-        try {
-            ServerSocket server = new ServerSocket(1111);
-
-            while (true) {
-
-                Socket socket = server.accept();
-                new Thread(new TrackerThread(socket)).start();
-
+    public void start() {
+        while (true) {
+            try {
+                Socket clientSocket = serverSocket.accept();
+                new Thread(new ClientHandler(clientSocket, peers)).start();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
-        catch (IOException e){
-            e.printStackTrace();
-        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        Tracker tracker = new Tracker(1111);
+        tracker.start();
     }
 }
