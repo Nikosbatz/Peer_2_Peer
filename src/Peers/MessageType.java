@@ -7,6 +7,7 @@ public enum MessageType {
     LIST_FILES("List Files"),
     LOGIN("Login "),
     LOGIN_SUCCESS("Login complete"),
+    LOGOUT_SUCCESS("Logout success"),
     RESPONSE("returned"),
     LOGOUT("logout"),
     ERROR("error");

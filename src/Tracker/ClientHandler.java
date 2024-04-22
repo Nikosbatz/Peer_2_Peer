@@ -14,11 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ConcurrentHashMap<String, PeerInfo> peers;
+    private ConcurrentHashMap<String, PeerInfo> connectedPeers;
     private Boolean clientConnected;
+
 
     public ClientHandler(Socket socket, ConcurrentHashMap<String, PeerInfo> peers, ConcurrentHashMap<String, PeerInfo> connectedPeers) {
         this.clientSocket = socket;
         this.peers = peers;
+        this.connectedPeers = connectedPeers;
     }
 
     @Override
@@ -120,12 +123,16 @@ class ClientHandler implements Runnable {
             PeerInfo peer = peers.get(username);
             peer.setToken(token);  // Store the new session token in the peer's information
 
+            // Insert peer to the connectedPeers hashMap
+            connectedPeers.put(token, peer);
+
             // Gather IP address and port information
             String ipAddress = clientSocket.getInetAddress().getHostAddress();
             int port = clientSocket.getPort();
 
             // Inform the peer of the successful login and send the session token
             Message reply = new Message(MessageType.LOGIN_SUCCESS, "Login successful: Token=" + token);
+            reply.setToken(token);
             reply.setContent("IP Address: " + ipAddress + ", Port: " + port + ", Token: " + token);
             oos.writeObject(reply);
 
@@ -143,9 +150,10 @@ class ClientHandler implements Runnable {
 
             if (token.equals(peer.getToken())) {
                 peer.setToken(null);  // Invalidate the token
-                oos.writeObject(new Message(MessageType.RESPONSE, "Logout successful"));
+                oos.writeObject(new Message(MessageType.LOGOUT_SUCCESS, "Logout successful"));
                 found = true;
                 clientConnected = false;
+                System.out.println("---------");
                 break;
             }
         }
@@ -204,15 +212,14 @@ class ClientHandler implements Runnable {
     private void handleCheckActive(Message msg, ObjectOutputStream oos) throws IOException {
         // Extract the token from the message to identify the peer.
         String token = msg.getContent();
-        PeerInfo peer = null;
 
-        // Manually search for the peer with the given token.
-        for (PeerInfo p : peers.values()) {
-            if (token.equals(p.getToken())) {
-                peer = p;
-                break;
-            }
-        }
+        // Select the peer with the corresponding token
+        PeerInfo peer = connectedPeers.get(token);
+
+
+
+
+
 
         if (peer != null) {
             long currentTime = System.currentTimeMillis();  // Get current time.

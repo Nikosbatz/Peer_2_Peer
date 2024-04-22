@@ -9,6 +9,7 @@ public class Peer {
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String token;
+    public static Boolean processRunning;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
@@ -16,11 +17,12 @@ public class Peer {
         ois = new ObjectInputStream(socket.getInputStream());
     }
 
-    public void registerWithTracker( List<String> files) throws IOException, ClassNotFoundException {
+    public void registerWithTracker(String username, String password, List<String> files) throws IOException, ClassNotFoundException {
         Message msg = new Message(MessageType.REGISTER, files);
 
         //TODO Ask user to input USERNAME and PASSWORD for the registration
-        msg.setContent("123:123");
+
+        msg.setContent(username+":"+password);
 
         oos.writeObject(msg);
         Object response = ois.readObject();
@@ -64,7 +66,53 @@ public class Peer {
         oos.writeObject(msg);
         Object reply = ois.readObject();
         if (reply instanceof Message){
-            System.out.println(((Message) reply).getContent());
+            // If Tracker replies with successful logout then token = null
+            if (((Message) reply).getType() == MessageType.LOGOUT_SUCCESS){
+                this.token = null;
+            }
+            else{
+                System.out.println("DEN KANEI LOGOUT");
+            }
+        }
+    }
+
+    public void showMenu () throws IOException, ClassNotFoundException{
+        Scanner in = new Scanner(System.in);
+
+        // If peer in not connected show the login/register forms
+        if (this.token == null) {
+            String username;
+            String password;
+            System.out.print("Choose an option:\n1. Registration\n2. Login\n3. Exit\nEnter your choice: ");
+            String choice = in.nextLine();
+
+            switch (choice){
+                case "1":
+                    System.out.print("Username: ");
+                    username = in.nextLine();
+                    System.out.print("\nPassword: ");
+                    password = in.nextLine();
+                    registerWithTracker(username, password, Arrays.asList("file1.txt", "file2.txt"));
+                    break;
+                case "2":
+                    System.out.print("Username: ");
+                    username = in.nextLine();
+                    System.out.print("\nPassword: ");
+                    password = in.nextLine();
+                    login(username, password);
+                    break;
+                case "3":
+                    processRunning = false;
+                    break;
+            }
+        }
+        // If peer is connected show the operations menu
+        else {
+            //TODO make the operations menu
+
+            //peer.listFiles();
+            System.out.println("EXEI KANEI LOGIN");
+            logOut();
         }
     }
 
@@ -72,11 +120,12 @@ public class Peer {
     public static void main(String[] args) {
         try {
             Peer peer = new Peer("localhost", 1111);
+            processRunning = true;
+            while(processRunning) {
+                peer.showMenu();
+            }
 
-            peer.registerWithTracker( Arrays.asList("file1.txt", "file2.txt"));
-            peer.listFiles();
-            peer.login("123", "123");
-            peer.logOut();
+
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
