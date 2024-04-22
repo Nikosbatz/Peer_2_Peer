@@ -8,21 +8,30 @@ public class PeerInfo implements Serializable {
     private String username;
     private String password;
     private static String token;//session token to manage logins and logoutzzz
+
+
     private String ipAddress;
     private int port;
     private int countDownloads ;
-    private int countFailures ;    public PeerInfo(String peerId, List<String> files,String username,String password) {
-        this.peerId = peerId;
+    private int countFailures ;
+    private long lastHeartbeat;  // Timestamp of the last heartbeat
+
+    public PeerInfo(List<String> files,String username,String password) {
+
         this.files = files;
         this.username = username;
         this.password = password;
         this.token = null;  // Initially, there is no token until login is successful
-        // Initially, there is no token until login is successful
-        countDownloads=0;
-        countFailures=0;
+        this.lastHeartbeat=0;
+        this.countDownloads=0;
+        this.countFailures=0;
     }
 
     // Getters
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
     public String getPeerId() {
         return peerId;
     }
@@ -40,26 +49,38 @@ public class PeerInfo implements Serializable {
         this.files = files;
     }
     public String getUsername() {
-        return username;
+        return this.username;
     }
 
     public String getPassword() {
-        return password;
+        return this.password;
     }
 
-    public static String getToken() {
-        return token;
+    public String getToken() {
+        return this.token;
     }
 
     public void setToken(String token) {
         this.token = token;
     }
-    public int getCount_failures() {return countFailures;}
 
-    public void setCount_failures(int count_failures) {this.countFailures = count_failures;}
+    public int getPort() {
+        return port;
+    }
+    public void setPort(int port){
+        this.port=port;
+    }
+    public int getCountFailures() {return countFailures;}
 
-    public int getCount_downloads() {return countDownloads;}
+    public void setCountfailures(int count_failures) {this.countFailures = count_failures;}
 
-    public void setCount_downloads(int count_downloads) {this.countDownloads = count_downloads;}
-}
+    public int getCountDownloads() {return countDownloads;}
+
+    public void setCountDownloads(int count_downloads) {this.countDownloads = count_downloads;}
+
+    public void setLastHeartbeat(long currentTime) {this.lastHeartbeat=currentTime;}
+
+    public long getLastHeartbeat() {
+        return this.lastHeartbeat;
+    }
 }
