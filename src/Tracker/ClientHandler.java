@@ -8,6 +8,7 @@ import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 class ClientHandler implements Runnable {
@@ -149,5 +150,38 @@ class ClientHandler implements Runnable {
             }
         }
         return false;
+    }
+    //TODO (Not ready yet)
+    private void handleDetails(Message msg, ObjectOutputStream oos) throws IOException {
+        String requestedFile = msg.getContent(); // Name of the file requested
+        List<PeerInfo> peersWithFile = peers.values().stream()
+                .filter(p -> p.getFiles().contains(requestedFile))
+                .collect(Collectors.toList());
+
+        if (peersWithFile.isEmpty()) {
+            oos.writeObject(new Message(MessageType.ERROR, "No peers have the file"));
+        } else {
+            // Prepare a detailed response
+            StringBuilder details = new StringBuilder();
+            for (PeerInfo peer : peersWithFile) {
+                details.append(peer.getUsername())
+                        .append(", IP: ").append(peer.getIpAddress())
+                        .append(", Port: ").append(peer.getPort())
+                        .append(", Downloads: ").append(peer.countDownloads.get())
+                        .append(", Failures: ").append(peer.countFailures.get())
+                        .append("\n");
+            }
+            oos.writeObject(new Message(MessageType.RESPONSE, details.toString()));
+        }
+    }
+
+    private void handleCheckActive(Message msg, ObjectOutputStream oos) throws IOException {
+        PeerInfo peer = peers.get(msg.getPeerId());
+        if (peer != null) {
+            peer.setLastHeartbeat(System.currentTimeMillis()); // Update last active time
+            oos.writeObject(new Message(MessageType.RESPONSE, "Peer is active"));
+        } else {
+            oos.writeObject(new Message(MessageType.ERROR, "Peer not found"));
+        }
     }
 }
