@@ -5,14 +5,13 @@ import java.util.List;
 
 public class Message implements Serializable {
     private MessageType type;  // Enum for message type
-    private String peerId;     // Identifier of the peer
+    private String token;     // Identifier of the peer
     private List<String> files;  // List of files for file operations
     private String content;    // General content of the message
 
     // Constructor for messages that include peer ID and file list
-    public Message(MessageType type, String peerId, List<String> files) {
+    public Message(MessageType type,  List<String> files) {
         this.type = type;
-        this.peerId = peerId;
         this.files = files;
     }
 
@@ -32,8 +31,8 @@ public class Message implements Serializable {
         return type;
     }
 
-    public String getPeerId() {
-        return peerId;
+    public String getToken() {
+        return token;
     }
 
     public List<String> getFiles() {
@@ -48,8 +47,8 @@ public class Message implements Serializable {
         this.type = type;
     }
 
-    public void setPeerId(String peerId) {
-        this.peerId = peerId;
+    public void setToken(String token) {
+        this.token = token;
     }
 
     public void setFiles(List<String> files) {

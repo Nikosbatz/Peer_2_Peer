@@ -8,6 +8,8 @@ import java.util.*;
 public class Tracker {
     private ServerSocket serverSocket;
     private ConcurrentHashMap<String, PeerInfo> peers = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, PeerInfo> connectedPeers = new ConcurrentHashMap<>();
+
 
     public Tracker(int port) throws IOException {
         serverSocket = new ServerSocket(port);
@@ -18,7 +20,7 @@ public class Tracker {
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
-                new Thread(new ClientHandler(clientSocket, peers)).start();
+                new Thread(new ClientHandler(clientSocket, peers, connectedPeers)).start();
             } catch (IOException e) {
                 e.printStackTrace();
             }

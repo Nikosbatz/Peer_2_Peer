@@ -8,6 +8,7 @@ public class Peer {
     private Socket socket;
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
+    private String token;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
@@ -15,8 +16,12 @@ public class Peer {
         ois = new ObjectInputStream(socket.getInputStream());
     }
 
-    public void registerWithTracker(String peerId, List<String> files) throws IOException, ClassNotFoundException {
-        Message msg = new Message(MessageType.REGISTER, peerId, files);
+    public void registerWithTracker( List<String> files) throws IOException, ClassNotFoundException {
+        Message msg = new Message(MessageType.REGISTER, files);
+
+        //TODO Ask user to input USERNAME and PASSWORD for the registration
+        msg.setContent("123:123");
+
         oos.writeObject(msg);
         Object response = ois.readObject();
         if (response instanceof Message) {
@@ -44,10 +49,22 @@ public class Peer {
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             if (responseMessage.getType() == MessageType.LOGIN_SUCCESS) {
-                System.out.println("Login successful. Token: " + responseMessage.getContent());
+                this.token = responseMessage.getToken();
+                System.out.println("Login successful. Token: " + this.token);
+
             } else {
                 System.out.println("Login failed.");
             }
+        }
+    }
+
+    public void logOut() throws IOException, ClassNotFoundException{
+        Message msg = new Message(MessageType.LOGOUT);
+        msg.setToken(this.token);
+        oos.writeObject(msg);
+        Object reply = ois.readObject();
+        if (reply instanceof Message){
+            System.out.println(((Message) reply).getContent());
         }
     }
 
@@ -56,9 +73,10 @@ public class Peer {
         try {
             Peer peer = new Peer("localhost", 1111);
 
-            peer.registerWithTracker("peer1", Arrays.asList("file1.txt", "file2.txt"));
+            peer.registerWithTracker( Arrays.asList("file1.txt", "file2.txt"));
             peer.listFiles();
-            peer.login("user1", "pass123");
+            peer.login("123", "123");
+            peer.logOut();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }

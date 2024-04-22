@@ -13,8 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ConcurrentHashMap<String, PeerInfo> peers;
+    private Boolean clientConnected;
 
-    public ClientHandler(Socket socket, ConcurrentHashMap<String, PeerInfo> peers) {
+    public ClientHandler(Socket socket, ConcurrentHashMap<String, PeerInfo> peers, ConcurrentHashMap<String, PeerInfo> connectedPeers ) {
         this.clientSocket = socket;
         this.peers = peers;
     }
@@ -23,15 +24,16 @@ class ClientHandler implements Runnable {
     public void run() {
         try (ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
              ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream())) {
+            clientConnected = true;
 
-            // Accepting peer messages until peer sends "Exit" message
-            //TODO handle peer "Exit" message
-            while(true) {
+            // Accepting peer messages until peer sends MessageType.EXIT Message
+            while(clientConnected) {
                 Object obj = ois.readObject();
-                if (obj instanceof Message) {
+                if (obj instanceof Message ) {
                     Message msg = (Message) obj;
                     handleMessage(msg, oos);
                 }
+
             }
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Error handling client: " + e.getMessage());
@@ -62,14 +64,22 @@ class ClientHandler implements Runnable {
         }
     }
     private void registerPeer(Message msg, ObjectOutputStream oos) throws IOException {
-        if (peers.containsKey(msg.getPeerId())) {
+
+        // handle registration form data
+        String[] details = msg.getContent().split(":");
+        String username = details[0];
+        String password = details[1];
+
+        if (peers.containsKey(username)) {
             oos.writeObject(new Message(MessageType.ERROR, "Peer already registered"));
+
         } else {
-            String[] details = msg.getContent().split(":");
-            String username = details[0];
-            String password = details[1];
-            PeerInfo newPeer = new PeerInfo(msg.getPeerId(), msg.getFiles(), username, password);
-            peers.put(msg.getPeerId(), newPeer);
+
+            // Instantiate new PeerInfo object for the new registrant
+            PeerInfo newPeer = new PeerInfo( msg.getFiles(), username, password);
+
+            // Insert new registrant peer to HashMap
+            peers.put(username, newPeer);
             oos.writeObject(new Message(MessageType.RESPONSE, "Registered successfully"));
         }
     }
@@ -83,27 +93,43 @@ class ClientHandler implements Runnable {
     }
 
     private void performLogin(Message msg, ObjectOutputStream oos) throws IOException {
+
+        // Handle Login form data
         String[] credentials = msg.getContent().split(":");
         String username = credentials[0];
         String password = credentials[1];
+
+        // If credentials match a User
         if (authenticate(username, password)) {
+
+            // Generate new Session token
             String token = generateToken();
-            peers.get(msg.getPeerId()).setToken(token);  // Store the token
-            oos.writeObject(new Message(MessageType.LOGIN_SUCCESS, token));
+
+            // Store the token
+            peers.get(username).setToken(token);
+
+            // Instantiate reply Message with Session token
+            Message reply = new Message(MessageType.LOGIN_SUCCESS);
+            reply.setToken(token);
+
+            // Write Object to client
+            oos.writeObject(reply);
         } else {
             oos.writeObject(new Message(MessageType.ERROR, "Login failed"));
         }
     }
 
     private void performLogout(Message msg, ObjectOutputStream oos) throws IOException {
-        String token = msg.getContent();
+        String token = msg.getToken();
         boolean found = false;
 
         for (PeerInfo peer : peers.values()) {
+
             if (token.equals(peer.getToken())) {
                 peer.setToken(null);  // Invalidate the token
                 oos.writeObject(new Message(MessageType.RESPONSE, "Logout successful"));
                 found = true;
+                clientConnected = false;
                 break;
             }
         }
