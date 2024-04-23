@@ -218,9 +218,6 @@ class ClientHandler implements Runnable {
 
 
 
-
-
-
         if (peer != null) {
             long currentTime = System.currentTimeMillis();  // Get current time.
             long lastActiveTime = peer.getLastHeartbeat();  // Get last recorded active time.

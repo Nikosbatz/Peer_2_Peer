@@ -43,23 +43,57 @@ public class Peer {
     }
 
     public void login(String username, String password) throws IOException, ClassNotFoundException {
-        // Create the login message with appropriate type and concatenated content of username and password
+        // Create the login message with username and password
         Message loginMessage = new Message(MessageType.LOGIN, username + ":" + password);
-        oos.writeObject(loginMessage); // Send login message to the tracker
-        Object response = ois.readObject(); // Read response from the tracker
+        oos.writeObject(loginMessage); // Send the login message to the tracker
+
+        // Await the response from the tracker
+        Object response = ois.readObject();
 
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             if (responseMessage.getType() == MessageType.LOGIN_SUCCESS) {
-                this.token = responseMessage.getToken();
-                System.out.println("Login successful. Token: " + this.token);
+                // Extract token
+                String[] details = responseMessage.getContent().split(",");
+                this.token = details[2].split(":")[1].trim();  //  "IP Address: x.x.x.x, Port: xxxx, Token: xxx"
+                String ipAddress = details[0].split(":")[1].trim();
+                int port = Integer.parseInt(details[1].split(":")[1].trim());
 
+                System.out.println("Login successful. Token: " + this.token);
+                System.out.println("Assigned IP: " + ipAddress);
+                System.out.println("Assigned Port: " + port);
+
+                //  send additional information back to the tracker if needed
+                sendAdditionalInfo();
             } else {
-                System.out.println("Login failed.");
+                System.out.println("Login failed. Reason: " + responseMessage.getContent());
             }
+        } else {
+            System.out.println("Unexpected response type from server.");
         }
     }
 
+
+    //login help function
+    private void sendAdditionalInfo() throws IOException {
+        // Assuming you have methods to get the shared directory info and other necessary details
+        String sharedDirectoryInfo = getSharedDirectoryInfo();
+        String ip = getLocalIPAddress();
+        int port = getLocalPort();
+
+        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port + "," + sharedDirectoryInfo);
+        oos.writeObject(additionalInfoMessage);
+    }
+    //TODO these are examples will implement w/t setters etc later
+    private String getSharedDirectoryInfo() {
+        return "list_of_files";
+    }
+    private String getLocalIPAddress() {
+        return "192.168.1.1";
+    }
+    private int getLocalPort() {
+        return 1234;
+    }
     public void logOut() throws IOException, ClassNotFoundException{
         Message msg = new Message(MessageType.LOGOUT);
         msg.setToken(this.token);
