@@ -3,6 +3,8 @@ package Peers;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Peer {
     private Socket socket;
@@ -90,8 +92,11 @@ public class Peer {
     //TODO these are examples will implement w/t setters etc later
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
-        String shared_dir = "C:\\Users\\nikos\\Documents\\GitHub\\Peer_2_Peer\\src\\shared_Directory1";
-        //
+        Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
+
+
+        String shared_dir = currentDir.resolve("shared_Directory1").toString();
+        System.out.println(shared_dir);
         File dir = new File(shared_dir);
 
         // if directory is not empty
