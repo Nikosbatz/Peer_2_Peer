@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class ClientHandler implements Runnable {
     private Socket clientSocket;
     private ConcurrentHashMap<String, PeerInfo> peers;
+
     private ConcurrentHashMap<String, PeerInfo> connectedPeers;
     private Boolean clientConnected;
 
@@ -51,6 +52,7 @@ class ClientHandler implements Runnable {
     }
 
     private void handleMessage(Message msg, ObjectOutputStream oos) throws IOException {
+        System.out.println("Message type: " + msg.getType());
         switch (msg.getType()) {
             case REGISTER:
                 registerPeer(msg, oos);
@@ -63,6 +65,9 @@ class ClientHandler implements Runnable {
                 break;
             case LOGOUT:
                 performLogout(msg, oos);
+                break;
+            case INFORM:
+                informationFromPeer(msg,oos);
                 break;
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
@@ -82,7 +87,7 @@ class ClientHandler implements Runnable {
         } else {
 
             // Instantiate new PeerInfo object for the new registrant
-            PeerInfo newPeer = new PeerInfo(msg.getFiles(), username, password);
+            PeerInfo newPeer = new PeerInfo(username, password);
 
             // Insert new registrant peer to HashMap
             peers.put(username, newPeer);
@@ -128,9 +133,10 @@ class ClientHandler implements Runnable {
 
             // Gather IP address and port information
             String ipAddress = clientSocket.getInetAddress().getHostAddress();
+            System.out.println(ipAddress);
             int port = clientSocket.getPort();
 
-            // Inform the peer of the successful login and send the session token
+            // Inform peer of the successful login and send the session token
             Message reply = new Message(MessageType.LOGIN_SUCCESS, "Login successful: Token=" + token);
             reply.setToken(token);
             reply.setContent("IP Address: " + ipAddress + ", Port: " + port + ", Token: " + token);
@@ -142,25 +148,34 @@ class ClientHandler implements Runnable {
         }
     }
 
+    private void informationFromPeer(Message msg, ObjectOutputStream oos){
+
+        PeerInfo peer = connectedPeers.get(msg.getToken());
+        String[] msgData = msg.getContent().split(",");
+        // not best practice with split
+        peer.setIp(msgData[0]);
+        peer.setPort(Integer.parseInt(msgData[1]));
+        peer.setFiles(msg.getFiles());
+
+    }
+
     private void performLogout(Message msg, ObjectOutputStream oos) throws IOException {
         String token = msg.getToken();
-        boolean found = false;
 
-        for (PeerInfo peer : peers.values()) {
+        // If client with current token is connected
+        if (connectedPeers.containsKey(token)) {
+            PeerInfo peer = connectedPeers.get(token);
+            peer.setToken(null);  // Invalidate the token
+            msg = new Message(MessageType.LOGOUT_SUCCESS, "EKANE LOGOUT");
+            oos.writeObject(msg);
 
-            if (token.equals(peer.getToken())) {
-                peer.setToken(null);  // Invalidate the token
-                oos.writeObject(new Message(MessageType.LOGOUT_SUCCESS, "Logout successful"));
-                found = true;
-                clientConnected = false;
-                System.out.println("---------");
-                break;
-            }
+            connectedPeers.remove(token);
+            //clientConnected = false;
+        }
+        else {
+            oos.writeObject(new Message(MessageType.INFORM));
         }
 
-        if (!found) {
-            oos.writeObject(new Message(MessageType.ERROR, "Invalid token or already logged out"));
-        }
     }
 
     private String generateToken() {

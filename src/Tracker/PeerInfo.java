@@ -1,27 +1,30 @@
 package Tracker;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PeerInfo implements Serializable {
     private String peerId;
-    private List<String> files;
+
+    private ArrayList<String> files;
     private String username;
     private String password;
-    private static String token;//session token to manage logins and logoutzzz
+    private String token;//session token to manage logins and logout
 
 
     private String ipAddress;
     private int port;
+    private String ip;
     private int countDownloads ;
     private int countFailures ;
     private long lastHeartbeat;  // Timestamp of the last heartbeat
 
-    public PeerInfo(List<String> files,String username,String password) {
+    public PeerInfo(String username,String password) {
 
-        this.files = files;
         this.username = username;
         this.password = password;
-        this.token = null;  // Initially, there is no token until login is successful
+        // Initially, there is no token until login is successful
+        this.token = null;
         this.lastHeartbeat=0;
         this.countDownloads=0;
         this.countFailures=0;
@@ -36,7 +39,7 @@ public class PeerInfo implements Serializable {
         return peerId;
     }
 
-    public List<String> getFiles() {
+    public ArrayList<String> getFiles() {
         return files;
     }
 
@@ -45,7 +48,7 @@ public class PeerInfo implements Serializable {
         this.peerId = peerId;
     }
 
-    public void setFiles(List<String> files) {
+    public void setFiles(ArrayList<String> files) {
         this.files = files;
     }
     public String getUsername() {
@@ -82,5 +85,13 @@ public class PeerInfo implements Serializable {
 
     public long getLastHeartbeat() {
         return this.lastHeartbeat;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 }

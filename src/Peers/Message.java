@@ -1,16 +1,19 @@
 package Peers;
 
+import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Message implements Serializable {
     private MessageType type;  // Enum for message type
     private String token;     // Identifier of the peer
-    private List<String> files;  // List of files for file operations
+    private ArrayList<String> files;  // List of files for file operations
     private String content;    // General content of the message
 
+
     // Constructor for messages that include peer ID and file list
-    public Message(MessageType type,  List<String> files) {
+    public Message(MessageType type,  ArrayList<String> files) {
         this.type = type;
         this.files = files;
     }
@@ -35,9 +38,6 @@ public class Message implements Serializable {
         return token;
     }
 
-    public List<String> getFiles() {
-        return files;
-    }
 
     public String getContent() {
         return content;
@@ -51,9 +51,10 @@ public class Message implements Serializable {
         this.token = token;
     }
 
-    public void setFiles(List<String> files) {
+    public void setFiles(ArrayList<String> files) {
         this.files = files;
     }
+    public ArrayList<String> getFiles(){return this.files;}
 
     public void setContent(String content) {
         this.content = content;

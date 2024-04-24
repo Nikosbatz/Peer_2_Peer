@@ -9,6 +9,7 @@ public class Peer {
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String token;
+
     public static Boolean processRunning;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
@@ -17,8 +18,8 @@ public class Peer {
         ois = new ObjectInputStream(socket.getInputStream());
     }
 
-    public void registerWithTracker(String username, String password, List<String> files) throws IOException, ClassNotFoundException {
-        Message msg = new Message(MessageType.REGISTER, files);
+    public void registerWithTracker(String username, String password) throws IOException, ClassNotFoundException {
+        Message msg = new Message(MessageType.REGISTER);
 
         //TODO Ask user to input USERNAME and PASSWORD for the registration
 
@@ -45,7 +46,7 @@ public class Peer {
     public void login(String username, String password) throws IOException, ClassNotFoundException {
         // Create the login message with username and password
         Message loginMessage = new Message(MessageType.LOGIN, username + ":" + password);
-        oos.writeObject(loginMessage); // Send the login message to the tracker
+        oos.writeObject(loginMessage); // Send login message to the tracker
 
         // Await the response from the tracker
         Object response = ois.readObject();
@@ -63,7 +64,7 @@ public class Peer {
                 System.out.println("Assigned IP: " + ipAddress);
                 System.out.println("Assigned Port: " + port);
 
-                //  send additional information back to the tracker if needed
+                //  send additional information back to the tracker if needed (INFORM METHOD)
                 sendAdditionalInfo();
             } else {
                 System.out.println("Login failed. Reason: " + responseMessage.getContent());
@@ -77,16 +78,35 @@ public class Peer {
     //login help function
     private void sendAdditionalInfo() throws IOException {
         // Assuming you have methods to get the shared directory info and other necessary details
-        String sharedDirectoryInfo = getSharedDirectoryInfo();
+
         String ip = getLocalIPAddress();
         int port = getLocalPort();
 
-        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port + "," + sharedDirectoryInfo);
+        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
+        additionalInfoMessage.setToken(this.token);
+        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
         oos.writeObject(additionalInfoMessage);
     }
     //TODO these are examples will implement w/t setters etc later
-    private String getSharedDirectoryInfo() {
-        return "list_of_files";
+    private ArrayList<String> getSharedDirectoryInfo() {
+        // Path for this peer's shared_directory
+        String shared_dir = "C:\\Users\\nikos\\Documents\\GitHub\\Peer_2_Peer\\src\\shared_Directory1";
+        //
+        File dir = new File(shared_dir);
+
+        // if directory is not empty
+        if (dir.listFiles() != null){
+            ArrayList<File> files = new ArrayList<>(Arrays.asList(dir.listFiles()));
+            ArrayList<String> fileNames = new ArrayList<>();
+            for (File file: files){
+                fileNames.add(file.getName());
+            }
+            return fileNames;
+        }
+        else{
+            return null;
+        }
+
     }
     private String getLocalIPAddress() {
         return "192.168.1.1";
@@ -94,12 +114,20 @@ public class Peer {
     private int getLocalPort() {
         return 1234;
     }
+
     public void logOut() throws IOException, ClassNotFoundException{
         Message msg = new Message(MessageType.LOGOUT);
         msg.setToken(this.token);
         oos.writeObject(msg);
+
+        // Wait for server reply
         Object reply = ois.readObject();
+
         if (reply instanceof Message){
+
+            Message rep = (Message) reply;
+            System.out.println(rep.getContent());
+
             // If Tracker replies with successful logout then token = null
             if (((Message) reply).getType() == MessageType.LOGOUT_SUCCESS){
                 this.token = null;
@@ -126,7 +154,7 @@ public class Peer {
                     username = in.nextLine();
                     System.out.print("\nPassword: ");
                     password = in.nextLine();
-                    registerWithTracker(username, password, Arrays.asList("file1.txt", "file2.txt"));
+                    registerWithTracker(username, password);
                     break;
                 case "2":
                     System.out.print("Username: ");
@@ -143,10 +171,14 @@ public class Peer {
         // If peer is connected show the operations menu
         else {
             //TODO make the operations menu
+            System.out.print("Choose an option:\n1. Logout\nEnter your choice: ");
+            String choice = in.nextLine();
+            switch (choice){
+                case "1":
+                    logOut();
+                    break;
+            }
 
-            //peer.listFiles();
-            System.out.println("EXEI KANEI LOGIN");
-            logOut();
         }
     }
 
@@ -154,6 +186,7 @@ public class Peer {
     public static void main(String[] args) {
         try {
             Peer peer = new Peer("localhost", 1111);
+            peer.getSharedDirectoryInfo();
             processRunning = true;
             while(processRunning) {
                 peer.showMenu();
