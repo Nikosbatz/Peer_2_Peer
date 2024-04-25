@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.Files;
 
 public class Peer {
     private Socket socket;
@@ -35,13 +36,26 @@ public class Peer {
         }
     }
 
+    /**
+     * Requests the list of all files available in the P2P network from the tracker.
+     * Prints out the list or indicates if no files are available.
+     */
     public void listFiles() throws IOException, ClassNotFoundException {
-        Message msg = new Message(MessageType.LIST_FILES);
-        oos.writeObject(msg);
+        // Send a LIST_FILES message to the tracker
+        Message listRequest = new Message(MessageType.LIST_FILES);
+        oos.writeObject(listRequest);
+
+        // Wait for the response from the tracker
         Object response = ois.readObject();
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
-            System.out.println("Available files: " + responseMessage.getContent());
+            if (!responseMessage.getContent().isEmpty()) {
+                System.out.println("Available files: " + responseMessage.getContent());
+            } else {
+                System.out.println("No files available in the system.");
+            }
+        } else {
+            System.out.println("Received an invalid response from the tracker.");
         }
     }
 
@@ -76,20 +90,20 @@ public class Peer {
         }
     }
 
-
-    //login help function
-    private void sendAdditionalInfo() throws IOException {
-        // Assuming you have methods to get the shared directory info and other necessary details
-
-        String ip = getLocalIPAddress();
-        int port = getLocalPort();
-
-        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
-        additionalInfoMessage.setToken(this.token);
-        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
-        oos.writeObject(additionalInfoMessage);
+    public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
+        Message requestDetails = new Message(MessageType.DETAILS, fileName);
+        oos.writeObject(requestDetails);
+        Object response = ois.readObject();
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            handleFileDetailsResponse(responseMessage);
+        }
     }
-    //TODO these are examples will implement w/t setters etc later
+
+
+
+
+
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
@@ -120,6 +134,18 @@ public class Peer {
         return 1234;
     }
 
+    //login help function
+    private void sendAdditionalInfo() throws IOException {
+        // Assuming you have methods to get the shared directory info and other necessary details
+
+        String ip = getLocalIPAddress();
+        int port = getLocalPort();
+
+        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
+        additionalInfoMessage.setToken(this.token);
+        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
+        oos.writeObject(additionalInfoMessage);
+    }
     public void logOut() throws IOException, ClassNotFoundException{
         Message msg = new Message(MessageType.LOGOUT);
         msg.setToken(this.token);
@@ -142,6 +168,97 @@ public class Peer {
             }
         }
     }
+
+
+    // Method to check if a specific peer is active by sending a token or identifier
+    public void checkActive(String peerToken) throws IOException, ClassNotFoundException {
+        // Create and send a checkActive message
+        Message checkActiveMessage = new Message(MessageType.CHECK_ACTIVE, peerToken);
+        oos.writeObject(checkActiveMessage);
+
+        // Wait for the response from the tracker or peer
+        Object response = ois.readObject();
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            if (responseMessage.getType() == MessageType.ACTIVE_RESPONSE) {
+                // Here, the content can be "active" or "inactive"
+                System.out.println("Active check result for " + peerToken + ": " + responseMessage.getContent());
+            } else {
+                System.out.println("Error: Received unexpected message type.");
+            }
+        } else {
+            System.out.println("Error: Received invalid response.");
+        }
+    }
+    //DOWNLOADING..................
+    private void handleFileDetailsResponse(Message responseMessage) {
+        String[] peerDetails = responseMessage.getContent().split("\n");
+        double bestScore = 200000000;
+        String bestPeer = null;
+
+        for (String detail : peerDetails) {
+            String[] details = detail.split(", ");
+            String peerId = details[0];
+            int downloads = Integer.parseInt(details[3]);
+            int failures = Integer.parseInt(details[4]);
+            double score = calculateScore(downloads, failures);
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestPeer = peerId;
+            }
+        }
+
+        if (bestPeer != null) {
+            initiateDownloadFromPeer(bestPeer, responseMessage.getContent());
+        } else {
+            System.out.println("No suitable peers found for downloading.");
+        }
+    }
+
+    private double calculateScore(int downloads, int failures) {
+        return Math.pow(0.75, downloads) * Math.pow(1.25, failures);//0.75^count_downloads*1.25^count_failures.
+    }
+
+
+    private void initiateDownloadFromPeer(String bestPeerId, String fileName) {
+        try {
+            // Extract peer IP and port
+            String[] details = bestPeerId.split(",");
+            String peerIP = details[1].trim();
+            int peerPort = Integer.parseInt(details[2].trim());
+
+            try (Socket peerSocket = new Socket(peerIP, peerPort);
+                 ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
+                 ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
+
+                peerOut.writeObject(new Message(MessageType.REQUEST_FILE, fileName));
+                Message fileResponse = (Message) peerIn.readObject();
+
+                if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
+                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "downloads");
+                    Files.createDirectories(downloadPath);
+                    downloadPath = downloadPath.resolve(fileName);
+                    Files.write(downloadPath, fileResponse.getFileContent());
+                    System.out.println("File downloaded successfully to " + downloadPath.toString());
+                    notifyTrackerFileAvailable(fileName, bestPeerId);
+                } else {
+                    System.out.println("Failed to download the file: " + fileResponse.getContent());
+                }
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error during file download: " + e.getMessage());
+        }
+    }
+
+
+    // This method notifies the tracker that the file is now available from this peer
+    private void notifyTrackerFileAvailable(String fileName, String providerPeerId) throws IOException {
+        Message notifyMsg = new Message(MessageType.NOTIFY, fileName);
+        notifyMsg.setContent("Download successful from " + providerPeerId);
+        oos.writeObject(notifyMsg);
+    }
+
 
     public void showMenu () throws IOException, ClassNotFoundException{
         Scanner in = new Scanner(System.in);

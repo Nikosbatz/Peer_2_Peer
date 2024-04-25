@@ -67,12 +67,14 @@ class ClientHandler implements Runnable {
                 performLogout(msg, oos);
                 break;
             case INFORM:
-                informationFromPeer(msg,oos);
+                informationFromPeer(msg, oos);
                 break;
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
         }
     }
+
+
 
     private void registerPeer(Message msg, ObjectOutputStream oos) throws IOException {
 
@@ -95,13 +97,6 @@ class ClientHandler implements Runnable {
         }
     }
 
-    private void listFiles(ObjectOutputStream oos) throws IOException {
-        HashSet<String> allFiles = new HashSet<>();
-        for (PeerInfo peerInfo : peers.values()) {
-            allFiles.addAll(peerInfo.getFiles());
-        }
-        oos.writeObject(new Message(MessageType.RESPONSE, new ArrayList<>(allFiles).toString()));
-    }
 
     /**
      * Manages peer login:
@@ -148,7 +143,7 @@ class ClientHandler implements Runnable {
         }
     }
 
-    private void informationFromPeer(Message msg, ObjectOutputStream oos){
+    private void informationFromPeer(Message msg, ObjectOutputStream oos) {
 
         PeerInfo peer = connectedPeers.get(msg.getToken());
         String[] msgData = msg.getContent().split(",");
@@ -171,8 +166,7 @@ class ClientHandler implements Runnable {
 
             connectedPeers.remove(token);
             //clientConnected = false;
-        }
-        else {
+        } else {
             oos.writeObject(new Message(MessageType.INFORM));
         }
 
@@ -188,7 +182,24 @@ class ClientHandler implements Runnable {
         return peer != null && peer.getPassword().equals(password);
     }
 
-    //TODO (Not ready yet)
+    /**
+     * Handles the incoming requests from peers, including listing files.
+     */
+    private void listFiles(ObjectOutputStream oos) throws IOException {
+        HashSet<String> allFiles = new HashSet<>();
+        for (PeerInfo peerInfo : peers.values()) {
+            if (peerInfo.getFiles() != null) {
+                allFiles.addAll(peerInfo.getFiles());
+            }
+        }
+        // Check if there are any files to send
+        if (!allFiles.isEmpty()) {
+            oos.writeObject(new Message(MessageType.RESPONSE, new ArrayList<>(allFiles).toString()));
+        } else {
+            oos.writeObject(new Message(MessageType.RESPONSE, "No files available"));
+        }
+    }
+    //TODO NOT TESTED YET
     private void handleDetails(Message msg, ObjectOutputStream oos) throws IOException {
         String requestedFile = msg.getContent(); // Name of the file requested
         List<PeerInfo> peersWithFile = new ArrayList<>();
@@ -232,7 +243,6 @@ class ClientHandler implements Runnable {
         PeerInfo peer = connectedPeers.get(token);
 
 
-
         if (peer != null) {
             long currentTime = System.currentTimeMillis();  // Get current time.
             long lastActiveTime = peer.getLastHeartbeat();  // Get last recorded active time.
@@ -249,4 +259,15 @@ class ClientHandler implements Runnable {
             oos.writeObject(new Message(MessageType.ERROR, "Peer not found"));  // No peer found with the given token.
         }
     }
+
+    /*
+    public void completeDownload(boolean success, String fileName) {
+        Message downloadResult = new Message(success ? MessageType.DOWNLOAD_SUCCESS : MessageType.DOWNLOAD_FAIL, fileName);
+        downloadResult.setContent("Download " + (success ? "successful" : "failed") + " for " + fileName);
+        try {
+            oos.writeObject(downloadResult);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }*/
 }

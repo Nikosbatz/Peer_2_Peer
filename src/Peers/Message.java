@@ -23,6 +23,14 @@ public class Message implements Serializable {
         this.type = type;
         this.content = content;
     }
+    // byte[] fileContent attribute to hold the file data
+    private byte[] fileContent;
+
+    // Constructor for messages that include file content
+    public Message(MessageType type, byte[] fileContent) {
+        this.type = type;
+        this.fileContent = fileContent;
+    }
 
     // Constructor for messages with only a type (e.g., request list of files)
     public Message(MessageType type) {
@@ -58,5 +66,14 @@ public class Message implements Serializable {
 
     public void setContent(String content) {
         this.content = content;
+    }
+    // Getter for the file content
+    public byte[] getFileContent() {
+        return fileContent;
+    }
+
+    // Setter for the file content
+    public void setFileContent(byte[] fileContent) {
+        this.fileContent = fileContent;
     }
 }
