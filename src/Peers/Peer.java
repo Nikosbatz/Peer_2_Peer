@@ -93,16 +93,15 @@ public class Peer {
     public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
         Message requestDetails = new Message(MessageType.DETAILS, fileName);
         oos.writeObject(requestDetails);
+        oos.flush();
+
         Object response = ois.readObject();
+
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             handleFileDetailsResponse(responseMessage);
         }
     }
-
-
-
-
 
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
@@ -176,6 +175,8 @@ public class Peer {
         Message checkActiveMessage = new Message(MessageType.CHECK_ACTIVE, peerToken);
         oos.writeObject(checkActiveMessage);
 
+
+        oos.flush();
         // Wait for the response from the tracker or peer
         Object response = ois.readObject();
         if (response instanceof Message) {
@@ -195,9 +196,11 @@ public class Peer {
         String[] peerDetails = responseMessage.getContent().split("\n");
         double bestScore = 200000000;
         String bestPeer = null;
-
+        System.out.println(peerDetails);
         for (String detail : peerDetails) {
+            System.out.println("in");
             String[] details = detail.split(", ");
+            System.out.println(details);
             String peerId = details[0];
             int downloads = Integer.parseInt(details[3]);
             int failures = Integer.parseInt(details[4]);
@@ -269,7 +272,6 @@ public class Peer {
             String password;
             System.out.print("Choose an option:\n1. Registration\n2. Login\n3. Exit\nEnter your choice: ");
             String choice = in.nextLine();
-
             switch (choice){
                 case "1":
                     System.out.print("Username: ");
@@ -293,11 +295,27 @@ public class Peer {
         // If peer is connected show the operations menu
         else {
             //TODO make the operations menu
-            System.out.print("Choose an option:\n1. Logout\nEnter your choice: ");
+            System.out.print("Choose an option:\n1. Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n 5.Exit \nEnter your choice: ");
             String choice = in.nextLine();
             switch (choice){
                 case "1":
                     logOut();
+                    break;
+                case "2":
+                    listFiles();
+                    break;
+                case"3":
+                    System.out.println("Enter the filename for details\n");
+                    String details_file=in.nextLine();
+                    requestFileDetails(details_file);
+                    break;
+                case "4":
+                    System.out.println("Enter the filename to download");
+                    String download_file=in.nextLine();
+                    requestFileDetails(download_file);
+                    break;
+                case"5":
+                    System.out.println("exiting...");
                     break;
             }
 
