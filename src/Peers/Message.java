@@ -31,6 +31,7 @@ public class Message implements Serializable {
         this.type = type;
         this.content = content;
     }
+
     // byte[] fileContent attribute to hold the file data
     private byte[] fileContent;
 

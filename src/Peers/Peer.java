@@ -197,6 +197,7 @@ public class Peer {
 
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
+            responseMessage.setContent(fileName);
             System.out.println(responseMessage.getType());
             handleFileDetailsResponse(responseMessage);
         }
@@ -267,7 +268,7 @@ public class Peer {
                     downloadPath = downloadPath.resolve(fileName);
                     Files.write(downloadPath, fileResponse.getFileContent());
                     System.out.println("File downloaded successfully to " + downloadPath.toString());
-                    notifyTrackerFileAvailable(fileName, bestPeer);
+                    notifyTrackerSuccess(fileName, bestPeer);
                 } else {
                     System.out.println("Failed to download the file: " + fileResponse.getContent());
                 }
@@ -278,12 +279,20 @@ public class Peer {
     }
 
 
-    // This method notifies the tracker that the file is now available from this peer
-    private void notifyTrackerFileAvailable(String fileName, PeerInfo providerPeer) throws IOException {
-        Message notifyMsg = new Message(MessageType.NOTIFY, fileName);
-        notifyMsg.setContent("Download successful from " + providerPeer.getUsername());
+    // Notify Tracker if requested File downloaded succesfully.
+    private void notifyTrackerSuccess(String fileName, PeerInfo peer) throws IOException {
+        Message notifyMsg = new Message(MessageType.NOTIFY_SUCCESS, fileName);
+        notifyMsg.setUsername(peer.getUsername());
+        notifyMsg.setContent(fileName);
         oos.writeObject(notifyMsg);
+
     }
+
+
+    private void notifyTrackerFail(PeerInfo peer){
+
+    }
+
 
 
     public void showMenu () throws IOException, ClassNotFoundException{

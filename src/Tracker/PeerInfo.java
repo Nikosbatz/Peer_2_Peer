@@ -68,7 +68,7 @@ public class PeerInfo implements Serializable {
 
     public int getCountDownloads() {return countDownloads;}
 
-    public void setCountDownloads(int count_downloads) {this.countDownloads = count_downloads;}
+    public void incCountDownloads() {this.countDownloads++;}
 
     public void setLastHeartbeat(long currentTime) {this.lastHeartbeat=currentTime;}
 

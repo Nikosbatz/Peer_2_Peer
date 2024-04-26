@@ -73,6 +73,11 @@ class ClientHandler implements Runnable {
             case DETAILS:
                 handleDetails(msg,oos);
                 break;
+            case NOTIFY_FAIL:
+            case NOTIFY_SUCCESS:
+                handleNotification(msg, oos);
+                break;
+
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
         }
@@ -261,36 +266,17 @@ class ClientHandler implements Runnable {
         return null;
     }
 
-    /**
-     * Handles checking if a peer is currently active based on a token provided in the message.
-     * - Retrieves the peer from the peers list using the token from the message.
-     * - Checks if the peer's last activity time is within the allowed timeout period.
-     * - Updates the peer's last heartbeat time if they are still active.
-     * - Sends a response back indicating whether the peer is currently active or inactive.
-     */
-    private void handleCheckActive(Message msg, ObjectOutputStream oos) throws IOException {
-        // Extract the token from the message to identify the peer.
-        String token = msg.getContent();
 
-        // Select the peer with the corresponding token
-        PeerInfo peer = connectedPeers.get(token);
+    public void handleNotification(Message msg, ObjectOutputStream oos){
 
-
-        if (peer != null) {
-            long currentTime = System.currentTimeMillis();  // Get current time.
-            long lastActiveTime = peer.getLastHeartbeat();  // Get last recorded active time.
-            long timeout = 60000;  // Timeout value set to 60 seconds.
-
-            // Check if the last activity is within the timeout period.
-            if ((currentTime - lastActiveTime) < timeout) {
-                peer.setLastHeartbeat(currentTime);  // Update last active time.
-                oos.writeObject(new Message(MessageType.RESPONSE, "Peer is active"));
-            } else {
-                oos.writeObject(new Message(MessageType.ERROR, "Peer is inactive"));
-            }
-        } else {
-            oos.writeObject(new Message(MessageType.ERROR, "Peer not found"));  // No peer found with the given token.
+        // If download was successful update seeder's values
+        if (msg.getType() == MessageType.NOTIFY_SUCCESS){
+            // Update countDownloads of seeder
+            peers.get(msg.getUsername()).incCountDownloads();
+            // Update shj
+            peers.get(msg.getUsername()).getFiles().add(msg.getContent());
         }
+
     }
 
     /*

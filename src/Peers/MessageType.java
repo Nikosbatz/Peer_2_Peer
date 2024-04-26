@@ -12,8 +12,8 @@ public enum MessageType {
     ERROR("Error"),            // Used to indicate an error in processing a request
     INFORM("Inform"),          // Used to send updates or notifications to the tracker
     DETAILS("Details"),        // Request details about peers holding a specific file
-    DOWNLOAD_SUCCESS("Download Success"), // Acknowledges successful file download
-    DOWNLOAD_FAIL("Download Fail"), // Acknowledges a failed file download
+    NOTIFY_SUCCESS("Download Success"), // Acknowledges successful file download
+    NOTIFY_FAIL("Download Fail"), // Acknowledges a failed file download
     DOWNLOAD_REQUEST("Download request"),
     CHECK_ACTIVE("Check Active"), // Used to verify if a peer is active
     REQUEST_FILE("Request File"), // Request a file from another peer
