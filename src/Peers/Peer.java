@@ -245,7 +245,7 @@ public class Peer {
         return Math.pow(0.75, downloads) * Math.pow(1.25, failures);//0.75^count_downloads*1.25^count_failures.
     }
 
-//Downloading
+    //Downloading
     private void initiateDownloadFromPeer(PeerInfo bestPeer , String fileName) {
         //TODO bestPeerId is PeerInfo object
         try {
@@ -270,6 +270,7 @@ public class Peer {
                     System.out.println("File downloaded successfully to " + downloadPath.toString());
                     notifyTrackerSuccess(fileName, bestPeer);
                 } else {
+                    notifyTrackerFail(bestPeer);
                     System.out.println("Failed to download the file: " + fileResponse.getContent());
                 }
             }
@@ -282,6 +283,7 @@ public class Peer {
     // Notify Tracker if requested File downloaded succesfully.
     private void notifyTrackerSuccess(String fileName, PeerInfo peer) throws IOException {
         Message notifyMsg = new Message(MessageType.NOTIFY_SUCCESS, fileName);
+        notifyMsg.setToken(this.token);
         notifyMsg.setUsername(peer.getUsername());
         notifyMsg.setContent(fileName);
         oos.writeObject(notifyMsg);
@@ -290,7 +292,8 @@ public class Peer {
 
 
     private void notifyTrackerFail(PeerInfo peer){
-
+        Message notifyMsg = new Message(MessageType.NOTIFY_FAIL);
+        notifyMsg.setUsername(peer.getUsername());
     }
 
 

@@ -271,11 +271,19 @@ class ClientHandler implements Runnable {
 
         // If download was successful update seeder's values
         if (msg.getType() == MessageType.NOTIFY_SUCCESS){
+
             // Update countDownloads of seeder
             peers.get(msg.getUsername()).incCountDownloads();
-            // Update shj
-            peers.get(msg.getUsername()).getFiles().add(msg.getContent());
+
+            // Update sharedFiles of the user that downloaded the file
+            connectedPeers.get(msg.getToken()).getFiles().add(msg.getContent());
         }
+        else {
+
+            // Increment the failures counter of the seeder peer.
+            peers.get(msg.getUsername()).incCountfailures();
+        }
+
 
     }
 

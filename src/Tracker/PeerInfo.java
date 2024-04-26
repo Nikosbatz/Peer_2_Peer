@@ -64,7 +64,7 @@ public class PeerInfo implements Serializable {
     }
     public int getCountFailures() {return countFailures;}
 
-    public void setCountfailures(int count_failures) {this.countFailures = count_failures;}
+    public void incCountfailures() {this.countFailures ++;}
 
     public int getCountDownloads() {return countDownloads;}
 
