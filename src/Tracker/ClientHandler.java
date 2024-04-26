@@ -69,7 +69,9 @@ class ClientHandler implements Runnable {
             case INFORM:
                 informationFromPeer(msg, oos);
                 break;
-
+            case DETAILS:
+                handleDetails(msg,oos);
+                break;
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
         }
@@ -169,6 +171,7 @@ class ClientHandler implements Runnable {
             //clientConnected = false;
         } else {
             oos.writeObject(new Message(MessageType.INFORM));
+
         }
 
     }

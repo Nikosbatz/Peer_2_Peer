@@ -23,7 +23,14 @@ public class Peer {
 
     public void registerWithTracker(String username, String password) throws IOException, ClassNotFoundException {
         Message msg = new Message(MessageType.REGISTER);
+        //sdadasdasdas
+        ///sdasdasd//
+        ///asdasdasda
 
+        //sdsd
+
+
+        System.out.println("jhsss");
         //TODO Ask user to input USERNAME and PASSWORD for the registration
 
         msg.setContent(username+":"+password);
@@ -90,18 +97,6 @@ public class Peer {
         }
     }
 
-    public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
-        Message requestDetails = new Message(MessageType.DETAILS, fileName);
-        oos.writeObject(requestDetails);
-        oos.flush();
-
-        Object response = ois.readObject();
-
-        if (response instanceof Message) {
-            Message responseMessage = (Message) response;
-            handleFileDetailsResponse(responseMessage);
-        }
-    }
 
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
@@ -192,11 +187,25 @@ public class Peer {
         }
     }
     //DOWNLOADING..................
+    public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
+        Message requestDetails = new Message(MessageType.DETAILS, fileName);
+        oos.writeObject(requestDetails);
+
+
+        Object response = ois.readObject();
+
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            handleFileDetailsResponse(responseMessage);
+        }
+    }
     private void handleFileDetailsResponse(Message responseMessage) {
         String[] peerDetails = responseMessage.getContent().split("\n");
+
         double bestScore = 200000000;
         String bestPeer = null;
-        System.out.println(peerDetails);
+        System.out.println(peerDetails.length);
+
         for (String detail : peerDetails) {
             System.out.println("in");
             String[] details = detail.split(", ");
@@ -295,7 +304,7 @@ public class Peer {
         // If peer is connected show the operations menu
         else {
             //TODO make the operations menu
-            System.out.print("Choose an option:\n1. Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n 5.Exit \nEnter your choice: ");
+            System.out.print("Choose an option:\n1.Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n5.Exit \nEnter your choice: ");
             String choice = in.nextLine();
             switch (choice){
                 case "1":
