@@ -236,6 +236,7 @@ class ClientHandler implements Runnable {
     }
 
     public Boolean checkActive(PeerInfo peer){
+
         try {
             Socket socket = new Socket(peer.getIpAddress(), peer.getPort());
             ObjectInputStream in = new ObjectInputStream(socket.getInputStream());

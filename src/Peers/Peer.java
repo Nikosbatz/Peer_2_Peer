@@ -160,24 +160,31 @@ public class Peer {
     }
 
     // Method to check if a specific peer is active by sending a token or identifier
-    public void checkActive(String peerToken) throws IOException, ClassNotFoundException {
+    public long checkActive(String peerToken) throws IOException, ClassNotFoundException {
+        long startTime = System.currentTimeMillis();
+
         // Create and send a checkActive message
         Message checkActiveMessage = new Message(MessageType.CHECK_ACTIVE, peerToken);
         oos.writeObject(checkActiveMessage);
 
         // Wait for the response from the tracker or peer
         Object response = ois.readObject();
+        long responseTime = System.currentTimeMillis() - startTime; // Calculate response time after receiving the message
+
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             if (responseMessage.getType() == MessageType.ACTIVE_RESPONSE) {
                 //the content can be "active" or "inactive"
                 System.out.println("Active check result for " + peerToken + ": " + responseMessage.getContent());
+                return responseTime;
             } else {
                 System.out.println("Error: Received unexpected message type.");
+                return responseTime;
             }
         } else {
             System.out.println("Error: Received invalid response.");
         }
+        return  Long.MAX_VALUE;
     }
   //File details
     public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
@@ -194,7 +201,7 @@ public class Peer {
         }
     }
 
-    private void handleFileDetailsResponse(Message responseMessage) {
+    private void handleFileDetailsResponse(Message responseMessage) throws IOException, ClassNotFoundException {
         ArrayList <PeerInfo> peersWithFile = responseMessage.getPeers();
 
         double bestScore = 200000000;
@@ -207,7 +214,7 @@ public class Peer {
 
             int downloads = peer.getCountDownloads();
             int failures = peer.getCountFailures();
-            double score = calculateScore(downloads, failures);
+            double score = calculateScore(downloads, failures)+checkActive(peer.getToken());
 
             if (score < bestScore) {
                 bestScore = score;
