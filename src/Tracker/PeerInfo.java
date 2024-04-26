@@ -16,7 +16,7 @@ public class PeerInfo implements Serializable {
     private String ip;
     private int countDownloads ;
     private int countFailures ;
-    private long lastHeartbeat;  // Timestamp of the last heartbeat
+    private double score;  // Timestamp of the last heartbeat
 
     public PeerInfo(String username,String password) {
 
@@ -24,7 +24,7 @@ public class PeerInfo implements Serializable {
         this.password = password;
         // Initially, there is no token until login is successful
         this.token = null;
-        this.lastHeartbeat=0;
+
         this.countDownloads=0;
         this.countFailures=0;
     }
@@ -62,6 +62,14 @@ public class PeerInfo implements Serializable {
     public void setPort(int port){
         this.port=port;
     }
+
+    public double getScore() {
+        return score;
+    }
+
+    public void setScore(double score){
+        this.score=score;
+    }
     public int getCountFailures() {return countFailures;}
 
     public void incCountfailures() {this.countFailures ++;}
@@ -70,11 +78,6 @@ public class PeerInfo implements Serializable {
 
     public void incCountDownloads() {this.countDownloads++;}
 
-    public void setLastHeartbeat(long currentTime) {this.lastHeartbeat=currentTime;}
-
-    public long getLastHeartbeat() {
-        return this.lastHeartbeat;
-    }
 
     public String getIp() {
         return ip;

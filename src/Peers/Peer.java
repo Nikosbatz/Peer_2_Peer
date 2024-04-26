@@ -205,7 +205,7 @@ public class Peer {
 
     private void handleFileDetailsResponse(Message responseMessage) throws IOException, ClassNotFoundException {
         ArrayList <PeerInfo> peersWithFile = responseMessage.getPeers();
-
+        HashMap<PeerInfo,Double> peerScores = new HashMap<>();
         double bestScore = 200000000;
         PeerInfo bestPeer = null;
 
@@ -222,8 +222,8 @@ public class Peer {
                 bestScore = score;
                 bestPeer = peer;
             }
+            peerScores.put(peer,score);
         }
-
 
         if (bestPeer != null) {
             Scanner in = new Scanner(System.in);
@@ -233,7 +233,7 @@ public class Peer {
 
             // If user wishes to download the file from this peer
             if(response.equals("y")){
-                initiateDownloadFromPeer(bestPeer, responseMessage.getContent());
+                initiateDownloadFromPeer(bestPeer, responseMessage.getContent(),peerScores);
             }
 
         } else {
@@ -245,9 +245,8 @@ public class Peer {
         return Math.pow(0.75, downloads) * Math.pow(1.25, failures);//0.75^count_downloads*1.25^count_failures.
     }
 
-    //Downloading
-    private void initiateDownloadFromPeer(PeerInfo bestPeer , String fileName) {
-        //TODO bestPeerId is PeerInfo object
+    //-----------------Downloading-------------------------
+    private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores) {
         try {
             // Extract peer IP and port
 
@@ -272,6 +271,7 @@ public class Peer {
                 } else {
                     notifyTrackerFail(bestPeer);
                     System.out.println("Failed to download the file: " + fileResponse.getContent());
+                    retryDownload(fileName, bestPeer, scores);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -279,6 +279,29 @@ public class Peer {
         }
     }
 
+    private void retryDownload(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores) {
+        PeerInfo nextBestPeer = getNextBestPeer(filename, failedPeer, scores);
+        if (nextBestPeer != null) {
+            System.out.println("Attemting to download from another peer");
+            initiateDownloadFromPeer(nextBestPeer, filename, scores);
+
+        } else {
+            System.out.println("No other active peers have this file.\n Download terminated....");
+        }
+
+
+    }
+
+    private PeerInfo getNextBestPeer(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores) {
+        Map.Entry<PeerInfo, Double> maxEntry = null;
+        for (Map.Entry<PeerInfo, Double> entry : scores.entrySet()) {
+            if (maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0 || entry.getKey() != failedPeer) {
+                maxEntry = entry;
+
+            }
+        }
+        return maxEntry.getKey();
+    }
 
     // Notify Tracker if requested File downloaded succesfully.
     private void notifyTrackerSuccess(String fileName, PeerInfo peer) throws IOException {
