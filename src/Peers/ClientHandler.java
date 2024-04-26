@@ -4,26 +4,26 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.file.Paths;
 
-public class ClientHandler implements Runnable{
+public class ClientHandler implements Runnable {
 
     Socket client;
-    public ClientHandler(Socket client){
+
+    public ClientHandler(Socket client) {
         this.client = client;
     }
 
 
+    public void run() {
 
-    public void run(){
 
-
-        try{
+        try {
             ObjectOutputStream oos = new ObjectOutputStream(client.getOutputStream());
             ObjectInputStream is = new ObjectInputStream(client.getInputStream());
 
             Object msg = is.readObject();
-            if (msg instanceof Message){
+            if (msg instanceof Message) {
 
-                switch (((Message) msg).getType()){
+                switch (((Message) msg).getType()) {
                     case CHECK_ACTIVE:
                         oos.writeObject(new Message(MessageType.ACTIVE_RESPONSE));
 
@@ -37,13 +37,13 @@ public class ClientHandler implements Runnable{
                 }
             }
 
-        }
-        catch (IOException | ClassNotFoundException e){
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
 
 
     }
+
     private void handleCheckActive(ObjectOutputStream oos) throws IOException {
         // Respond back with ACTIVE_RESPONSE indicating this peer is active
         oos.writeObject(new Message(MessageType.ACTIVE_RESPONSE));
@@ -64,4 +64,5 @@ public class ClientHandler implements Runnable{
             // File not found or not accessible
             oos.writeObject(new Message(MessageType.ERROR, "File not found or inaccessible."));
         }
+    }
 }
