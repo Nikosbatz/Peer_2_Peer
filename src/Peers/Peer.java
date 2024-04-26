@@ -14,13 +14,16 @@ public class Peer {
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String token;
+    private int port;
+    private String ip;
 
     public static Boolean processRunning;
 
-    public Peer(String trackerHost, int trackerPort) throws IOException {
+    public Peer(String trackerHost, int trackerPort, int port) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
         oos = new ObjectOutputStream(socket.getOutputStream());
         ois = new ObjectInputStream(socket.getInputStream());
+        this.port = port;
     }
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
@@ -45,13 +48,9 @@ public class Peer {
         }
 
     }
-    private String getLocalIPAddress() {
-        return "192.168.1.1";
-    }
 
-    private int getLocalPort() {
-        return 1112;
-    }
+
+
 
 
     // ---------User authentication methods---------
@@ -126,8 +125,8 @@ public class Peer {
     //login help function
     private void sendAdditionalInfo() throws IOException {
 
-        String ip = getLocalIPAddress();
-        int port = getLocalPort();
+        String ip = getIp();
+        int port = getPort();
 
         Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
         additionalInfoMessage.setToken(this.token);
@@ -160,30 +159,32 @@ public class Peer {
     }
 
     // Method to check if a specific peer is active by sending a token or identifier
-    public long checkActive(String peerToken) throws IOException, ClassNotFoundException {
+    public long checkActive(PeerInfo peer) throws IOException, ClassNotFoundException {
         long startTime = System.currentTimeMillis();
 
-        // Create and send a checkActive message
-        Message checkActiveMessage = new Message(MessageType.CHECK_ACTIVE, peerToken);
-        oos.writeObject(checkActiveMessage);
+        // Open new Socket with the peer that owns the file
+        try {
+            Socket socket = new Socket(peer.getIp(), peer.getPort());
+            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 
-        // Wait for the response from the tracker or peer
-        Object response = ois.readObject();
-        long responseTime = System.currentTimeMillis() - startTime; // Calculate response time after receiving the message
-
-        if (response instanceof Message) {
-            Message responseMessage = (Message) response;
-            if (responseMessage.getType() == MessageType.ACTIVE_RESPONSE) {
-                //the content can be "active" or "inactive"
-                System.out.println("Active check result for " + peerToken + ": " + responseMessage.getContent());
-                return responseTime;
-            } else {
-                System.out.println("Error: Received unexpected message type.");
+            out.writeObject(new Message(MessageType.CHECK_ACTIVE));
+            Object msg = in.readObject();
+            long responseTime = System.currentTimeMillis() - startTime;
+            // If Peer responds with MessageType.ACTIVE_RESPONSE then return true
+            if (msg instanceof Message && ((Message) msg).getType() == MessageType.ACTIVE_RESPONSE){
                 return responseTime;
             }
-        } else {
-            System.out.println("Error: Received invalid response.");
         }
+        catch (IOException  e){
+            System.out.println("Peer is not responding");
+            return (Long.MAX_VALUE) ;
+        }
+        catch (ClassNotFoundException e){
+            e.printStackTrace();
+        }
+
+        // Wait for the response from the tracker or peer
         return  Long.MAX_VALUE;
     }
   //File details
@@ -214,7 +215,7 @@ public class Peer {
 
             int downloads = peer.getCountDownloads();
             int failures = peer.getCountFailures();
-            double score = calculateScore(downloads, failures)+checkActive(peer.getToken());
+            double score = calculateScore(downloads, failures)+checkActive(peer);
 
             if (score < bestScore) {
                 bestScore = score;
@@ -225,13 +226,13 @@ public class Peer {
 
         if (bestPeer != null) {
             Scanner in = new Scanner(System.in);
-            System.out.println("Best peer details:\nUsername: \nIP: \nPort: ");
+            System.out.println("Best peer details:\nUsername: "+bestPeer.getUsername()+"\nIP: "+bestPeer.getIp()+"\nPort: "+bestPeer.getPort());
             System.out.println("Do you want to download the file? y/n");
             String response = in.nextLine();
 
             // If user wishes to download the file from this peer
             if(response.equals("y")){
-                //initiateDownloadFromPeer(bestPeer, responseMessage.getContent());
+                initiateDownloadFromPeer(bestPeer, responseMessage.getContent());
             }
 
         } else {
@@ -257,7 +258,7 @@ public class Peer {
                  ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
                  ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
 
-                peerOut.writeObject(new Message(MessageType.REQUEST_FILE, fileName));
+                peerOut.writeObject(new Message(MessageType.DOWNLOAD_REQUEST, fileName));
                 Message fileResponse = (Message) peerIn.readObject();
 
                 if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
@@ -347,7 +348,7 @@ public class Peer {
 
     public static void main(String[] args) {
         try {
-            Peer peer = new Peer("localhost", 1111);
+            Peer peer = new Peer("localhost", 1111, 1112);
 
             // Start a PeerServer where Peer accepts requests from other Peers or the Tracker.
             new Thread(new peerServer()).start();
@@ -365,5 +366,21 @@ public class Peer {
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getIp() {
+        return "localhost";
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 }

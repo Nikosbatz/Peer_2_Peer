@@ -219,7 +219,7 @@ class ClientHandler implements Runnable {
 
                 // Checks if this peer is active before inserting the object in the peersWithFile
                 if (checkActive(peer)) {
-                    System.out.println("------------");
+
                     peersWithFile.add(peer);
                 }
             }
@@ -238,7 +238,7 @@ class ClientHandler implements Runnable {
     public Boolean checkActive(PeerInfo peer){
 
         try {
-            Socket socket = new Socket(peer.getIpAddress(), peer.getPort());
+            Socket socket = new Socket(peer.getIp(), peer.getPort());
             ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 

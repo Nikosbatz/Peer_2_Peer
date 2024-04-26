@@ -11,7 +11,7 @@ public class PeerInfo implements Serializable {
     private String token;//session token to manage logins and logout
 
 
-    private String ipAddress;
+
     private int port;
     private String ip;
     private int countDownloads ;
@@ -30,11 +30,6 @@ public class PeerInfo implements Serializable {
     }
 
     // Getters
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-
 
     public ArrayList<String> getFiles() {
         return files;

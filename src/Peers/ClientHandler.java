@@ -2,6 +2,7 @@ package Peers;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ClientHandler implements Runnable {
@@ -50,8 +51,13 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleDownloadRequest(String fileName, ObjectOutputStream oos) throws IOException {
-        // Locate the file in the shared directory
-        File file = new File(Paths.get(System.getProperty("user.dir"), "shared_Directory1", fileName).toString());
+
+
+        Path dir = Paths.get(System.getProperty("user.dir")).resolve("src");
+        String path = dir.resolve("shared_Directory1").toString();
+        File file = new File(path);
+
+
 
         if (file.exists() && file.isFile()) {
             // Read the file content and send it
