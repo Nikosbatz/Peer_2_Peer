@@ -11,7 +11,7 @@ public class peerServer implements Runnable{
     public void run(){
         try{
             while(true) {
-                ServerSocket server = new ServerSocket(1112);
+                ServerSocket server = new ServerSocket(1111);
                 Socket client = server.accept();
 
                 new Thread(new ClientHandler(client)).start();

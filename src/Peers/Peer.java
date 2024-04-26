@@ -244,42 +244,43 @@ public class Peer {
     }
 
 //Downloading
-//    private void initiateDownloadFromPeer(PeerInfo peer , String fileName) {
-//        //TODO bestPeerId is PeerInfo object
-//        try {
-//            // Extract peer IP and port
-//            String[] details = bestPeerId.split(",");
-//            String peerIP = details[1].trim();
-//            int peerPort = Integer.parseInt(details[2].trim());
-//
-//            try (Socket peerSocket = new Socket(peerIP, peerPort);
-//                 ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
-//                 ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
-//
-//                peerOut.writeObject(new Message(MessageType.REQUEST_FILE, fileName));
-//                Message fileResponse = (Message) peerIn.readObject();
-//
-//                if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
-//                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "downloads");
-//                    Files.createDirectories(downloadPath);
-//                    downloadPath = downloadPath.resolve(fileName);
-//                    Files.write(downloadPath, fileResponse.getFileContent());
-//                    System.out.println("File downloaded successfully to " + downloadPath.toString());
-//                    notifyTrackerFileAvailable(fileName, bestPeerId);
-//                } else {
-//                    System.out.println("Failed to download the file: " + fileResponse.getContent());
-//                }
-//            }
-//        } catch (IOException | ClassNotFoundException e) {
-//            System.out.println("Error during file download: " + e.getMessage());
-//        }
-//    }
+    private void initiateDownloadFromPeer(PeerInfo bestPeer , String fileName) {
+        //TODO bestPeerId is PeerInfo object
+        try {
+            // Extract peer IP and port
+
+            String peerIP = bestPeer.getIp();
+            System.out.println(peerIP);
+            int peerPort = bestPeer.getPort();
+
+            try (Socket peerSocket = new Socket(peerIP, peerPort);
+                 ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
+                 ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
+
+                peerOut.writeObject(new Message(MessageType.REQUEST_FILE, fileName));
+                Message fileResponse = (Message) peerIn.readObject();
+
+                if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
+                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "downloads");
+                    Files.createDirectories(downloadPath);
+                    downloadPath = downloadPath.resolve(fileName);
+                    Files.write(downloadPath, fileResponse.getFileContent());
+                    System.out.println("File downloaded successfully to " + downloadPath.toString());
+                    notifyTrackerFileAvailable(fileName, bestPeer);
+                } else {
+                    System.out.println("Failed to download the file: " + fileResponse.getContent());
+                }
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error during file download: " + e.getMessage());
+        }
+    }
 
 
     // This method notifies the tracker that the file is now available from this peer
-    private void notifyTrackerFileAvailable(String fileName, String providerPeerId) throws IOException {
+    private void notifyTrackerFileAvailable(String fileName, PeerInfo providerPeer) throws IOException {
         Message notifyMsg = new Message(MessageType.NOTIFY, fileName);
-        notifyMsg.setContent("Download successful from " + providerPeerId);
+        notifyMsg.setContent("Download successful from " + providerPeer.getUsername());
         oos.writeObject(notifyMsg);
     }
 
