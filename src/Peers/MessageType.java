@@ -14,11 +14,13 @@ public enum MessageType {
     DETAILS("Details"),        // Request details about peers holding a specific file
     DOWNLOAD_SUCCESS("Download Success"), // Acknowledges successful file download
     DOWNLOAD_FAIL("Download Fail"), // Acknowledges a failed file download
+    DOWNLOAD_REQUEST("Download request"),
     CHECK_ACTIVE("Check Active"), // Used to verify if a peer is active
     REQUEST_FILE("Request File"), // Request a file from another peer
     FILE_RESPONSE("File Response"), // Response message containing the file data
     NOTIFY("Notify"),          // Notify the tracker about changes in file availability
     ACTIVE_RESPONSE("Active Response"), // Response to CHECK_ACTIVE request
+
     EXIT("Exit");              // Indicate that a peer or tracker is exiting the session
 
     private final String actionDescription;

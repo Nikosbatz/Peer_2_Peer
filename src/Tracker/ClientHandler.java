@@ -6,6 +6,7 @@ import Peers.MessageType;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -203,33 +204,60 @@ class ClientHandler implements Runnable {
             oos.writeObject(new Message(MessageType.RESPONSE, "No files available"));
         }
     }
-    //TODO NOT TESTED YET
-    private void handleDetails(Message msg, ObjectOutputStream oos) throws IOException {
-        String requestedFile = msg.getContent(); // Name of the file requested
-        List<PeerInfo> peersWithFile = new ArrayList<>();
 
-        // Iterate over the collection of peers and add those with the requested file to the list
-        for (PeerInfo peer : peers.values()) {
+    private void handleDetails(Message msg, ObjectOutputStream oos) throws IOException {
+
+        // Name of the file requested
+        String requestedFile = msg.getContent();
+        ArrayList<PeerInfo> peersWithFile = new ArrayList<>();
+
+
+
+        // Iterate over the collection of connectedPeers and add those with the requested file to the list
+        for (PeerInfo peer : connectedPeers.values()) {
             if (peer.getFiles().contains(requestedFile)) {
-                peersWithFile.add(peer);
+
+                // Checks if this peer is active before inserting the object in the peersWithFile
+                if (checkActive(peer)) {
+                    System.out.println("------------");
+                    peersWithFile.add(peer);
+                }
             }
         }
 
         if (peersWithFile.isEmpty()) {
             oos.writeObject(new Message(MessageType.ERROR, "No peers have the file"));
         } else {
-            // Prepare a detailed response
-            StringBuilder details = new StringBuilder();
-            for (PeerInfo peer : peersWithFile) {
-                details.append(peer.getUsername())
-                        .append(", IP: ").append(peer.getIpAddress())
-                        .append(", Port: ").append(peer.getPort())
-                        .append(", Downloads: ").append(peer.getCountDownloads())
-                        .append(", Failures: ").append(peer.getCountFailures())
-                        .append("\n");
-            }
-            oos.writeObject(new Message(MessageType.RESPONSE, details.toString()));
+            // Respond with the peers that have the file requested
+            Message response = new Message(MessageType.RESPONSE);
+            response.setPeers(peersWithFile);
+            oos.writeObject(response);
         }
+    }
+
+    public Boolean checkActive(PeerInfo peer){
+        try {
+            Socket socket = new Socket(peer.getIpAddress(), peer.getPort());
+            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+
+            out.writeObject(new Message(MessageType.CHECK_ACTIVE));
+            Object msg = in.readObject();
+
+            // If Peer responds with MessageType.ACTIVE_RESPONSE then return true
+            if (msg instanceof Message && ((Message) msg).getType() == MessageType.ACTIVE_RESPONSE){
+                return true;
+            }
+        }
+        catch (IOException  e){
+            System.out.println("Peer is not responding");
+            return false;
+        }
+        catch (ClassNotFoundException e){
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     /**

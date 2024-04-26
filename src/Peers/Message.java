@@ -1,5 +1,7 @@
 package Peers;
 
+import Tracker.PeerInfo;
+
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -10,6 +12,12 @@ public class Message implements Serializable {
     private String token;     // Identifier of the peer
     private ArrayList<String> files;  // List of files for file operations
     private String content;    // General content of the message
+    private String ip;
+    private int port;
+    private  String username;
+    private String password;
+    private ArrayList<PeerInfo> peers ;
+
 
 
     // Constructor for messages that include peer ID and file list
@@ -75,5 +83,45 @@ public class Message implements Serializable {
     // Setter for the file content
     public void setFileContent(byte[] fileContent) {
         this.fileContent = fileContent;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public ArrayList<PeerInfo> getPeers() {
+        return peers;
+    }
+
+    public void setPeers(ArrayList<PeerInfo> peers) {
+        this.peers = peers;
     }
 }

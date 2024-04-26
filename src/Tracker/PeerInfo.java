@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PeerInfo implements Serializable {
-    private String peerId;
 
     private ArrayList<String> files;
     private String username;
@@ -35,18 +34,13 @@ public class PeerInfo implements Serializable {
         return ipAddress;
     }
 
-    public String getPeerId() {
-        return peerId;
-    }
+
 
     public ArrayList<String> getFiles() {
         return files;
     }
 
     // Setters
-    public void setPeerId(String peerId) {
-        this.peerId = peerId;
-    }
 
     public void setFiles(ArrayList<String> files) {
         this.files = files;
