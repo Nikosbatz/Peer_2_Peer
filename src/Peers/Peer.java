@@ -22,78 +22,6 @@ public class Peer {
         oos = new ObjectOutputStream(socket.getOutputStream());
         ois = new ObjectInputStream(socket.getInputStream());
     }
-
-    public void registerWithTracker(String username, String password) throws IOException, ClassNotFoundException {
-        Message msg = new Message(MessageType.REGISTER);
-
-
-        //TODO Ask user to input USERNAME and PASSWORD for the registration
-
-        msg.setContent(username+":"+password);
-
-        oos.writeObject(msg);
-        Object response = ois.readObject();
-        if (response instanceof Message) {
-            Message responseMessage = (Message) response;
-            System.out.println("Registration Response: " + responseMessage.getContent());
-        }
-    }
-
-    /**
-     * Requests the list of all files available in the P2P network from the tracker.
-     * Prints out the list or indicates if no files are available.
-     */
-    public void listFiles() throws IOException, ClassNotFoundException {
-        // Send a LIST_FILES message to the tracker
-        Message listRequest = new Message(MessageType.LIST_FILES);
-        oos.writeObject(listRequest);
-
-        // Wait for the response from the tracker
-        Object response = ois.readObject();
-        if (response instanceof Message) {
-            Message responseMessage = (Message) response;
-            if (!responseMessage.getContent().isEmpty()) {
-                System.out.println("Available files: " + responseMessage.getContent());
-            } else {
-                System.out.println("No files available in the system.");
-            }
-        } else {
-            System.out.println("Received an invalid response from the tracker.");
-        }
-    }
-
-    public void login(String username, String password) throws IOException, ClassNotFoundException {
-        // Create the login message with username and password
-        Message loginMessage = new Message(MessageType.LOGIN, username + ":" + password);
-        oos.writeObject(loginMessage); // Send login message to the tracker
-
-        // Await the response from the tracker
-        Object response = ois.readObject();
-
-        if (response instanceof Message) {
-            Message responseMessage = (Message) response;
-            if (responseMessage.getType() == MessageType.LOGIN_SUCCESS) {
-                // Extract token
-                String[] details = responseMessage.getContent().split(",");
-                this.token = details[2].split(":")[1].trim();  //  "IP Address: x.x.x.x, Port: xxxx, Token: xxx"
-                String ipAddress = details[0].split(":")[1].trim();
-                int port = Integer.parseInt(details[1].split(":")[1].trim());
-
-                System.out.println("Login successful. Token: " + this.token);
-                System.out.println("Assigned IP: " + ipAddress);
-                System.out.println("Assigned Port: " + port);
-
-                //  send additional information back to the tracker if needed (INFORM METHOD)
-                sendAdditionalInfo();
-            } else {
-                System.out.println("Login failed. Reason: " + responseMessage.getContent());
-            }
-        } else {
-            System.out.println("Unexpected response type from server.");
-        }
-    }
-
-
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
@@ -120,21 +48,58 @@ public class Peer {
     private String getLocalIPAddress() {
         return "192.168.1.1";
     }
+
     private int getLocalPort() {
         return 1112;
     }
 
-    //login help function
-    private void sendAdditionalInfo() throws IOException {
-        // Assuming you have methods to get the shared directory info and other necessary details
 
-        String ip = getLocalIPAddress();
-        int port = getLocalPort();
+    // ---------User authentication methods---------
+    public void registerWithTracker(String username, String password) throws IOException, ClassNotFoundException {
+        Message msg = new Message(MessageType.REGISTER);
 
-        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
-        additionalInfoMessage.setToken(this.token);
-        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
-        oos.writeObject(additionalInfoMessage);
+
+        //TODO Ask user to input USERNAME and PASSWORD for the registration
+
+        msg.setContent(username+":"+password);
+
+        oos.writeObject(msg);
+        Object response = ois.readObject();
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            System.out.println("Registration Response: " + responseMessage.getContent());
+        }
+    }
+
+    public void login(String username, String password) throws IOException, ClassNotFoundException {
+        // Create the login message with username and password
+        Message loginMessage = new Message(MessageType.LOGIN, username + ":" + password);
+        oos.writeObject(loginMessage); // Send login message to the tracker
+
+        // Await the response from the tracker
+        Object response = ois.readObject();
+
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            if (responseMessage.getType() == MessageType.LOGIN_SUCCESS) {
+                // Extract token
+                String[] details = responseMessage.getContent().split(",");
+                this.token = details[2].split(":")[1].trim();  //  "IP Address: x.x.x.x, Port: xxxx, Token: xxx"
+                String ipAddress = details[0].split(":")[1].trim();
+                int port = Integer.parseInt(details[1].split(":")[1].trim());
+
+                System.out.println("Login successful. Token: " + this.token);
+                System.out.println("Assigned IP: " + ipAddress);
+                System.out.println("Assigned Port: " + port);
+
+                //  send additional information back to the tracker (INFORM METHOD)
+                sendAdditionalInfo();
+            } else {
+                System.out.println("Login failed. Reason: " + responseMessage.getContent());
+            }
+        } else {
+            System.out.println("Unexpected response type from server.");
+        }
     }
     public void logOut() throws IOException, ClassNotFoundException{
         Message msg = new Message(MessageType.LOGOUT);
@@ -158,7 +123,41 @@ public class Peer {
             }
         }
     }
+    //login help function
+    private void sendAdditionalInfo() throws IOException {
 
+        String ip = getLocalIPAddress();
+        int port = getLocalPort();
+
+        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
+        additionalInfoMessage.setToken(this.token);
+        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
+        oos.writeObject(additionalInfoMessage);
+    }
+
+//-----------File managment methods----------
+    /**
+     * Requests the list of all files available in the P2P network from the tracker.
+     * Prints out the list or indicates if no files are available.
+     */
+    public void listFiles() throws IOException, ClassNotFoundException {
+        // Send a LIST_FILES message to the tracker
+        Message listRequest = new Message(MessageType.LIST_FILES);
+        oos.writeObject(listRequest);
+
+        // Wait for the response from the tracker
+        Object response = ois.readObject();
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            if (!responseMessage.getContent().isEmpty()) {
+                System.out.println("Available files: " + responseMessage.getContent());
+            } else {
+                System.out.println("No files available in the system.");
+            }
+        } else {
+            System.out.println("Received an invalid response from the tracker.");
+        }
+    }
 
     // Method to check if a specific peer is active by sending a token or identifier
     public void checkActive(String peerToken) throws IOException, ClassNotFoundException {
@@ -171,7 +170,7 @@ public class Peer {
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             if (responseMessage.getType() == MessageType.ACTIVE_RESPONSE) {
-                // Here, the content can be "active" or "inactive"
+                //the content can be "active" or "inactive"
                 System.out.println("Active check result for " + peerToken + ": " + responseMessage.getContent());
             } else {
                 System.out.println("Error: Received unexpected message type.");
@@ -180,7 +179,7 @@ public class Peer {
             System.out.println("Error: Received invalid response.");
         }
     }
-    //DOWNLOADING..................
+  //File details
     public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
         Message requestDetails = new Message(MessageType.DETAILS, fileName);
         oos.writeObject(requestDetails);
@@ -194,6 +193,7 @@ public class Peer {
             handleFileDetailsResponse(responseMessage);
         }
     }
+
     private void handleFileDetailsResponse(Message responseMessage) {
         ArrayList <PeerInfo> peersWithFile = responseMessage.getPeers();
 
@@ -236,7 +236,7 @@ public class Peer {
         return Math.pow(0.75, downloads) * Math.pow(1.25, failures);//0.75^count_downloads*1.25^count_failures.
     }
 
-
+//Downloading
 //    private void initiateDownloadFromPeer(PeerInfo peer , String fileName) {
 //        //TODO bestPeerId is PeerInfo object
 //        try {
