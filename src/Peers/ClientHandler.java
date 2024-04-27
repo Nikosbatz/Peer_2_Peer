@@ -8,9 +8,12 @@ import java.nio.file.Paths;
 public class ClientHandler implements Runnable {
 
     Socket client;
+    String shared_dir;
 
-    public ClientHandler(Socket client) {
+    public ClientHandler(Socket client, String shared_dir) {
+
         this.client = client;
+        this.shared_dir = shared_dir;
     }
 
 
@@ -27,6 +30,7 @@ public class ClientHandler implements Runnable {
                 switch (((Message) msg).getType()) {
                     case CHECK_ACTIVE:
                         oos.writeObject(new Message(MessageType.ACTIVE_RESPONSE));
+                        break;
 
                     case DOWNLOAD_REQUEST:
                         handleDownloadRequest(((Message) msg).getContent(), oos);
@@ -54,10 +58,11 @@ public class ClientHandler implements Runnable {
 
 
         Path dir = Paths.get(System.getProperty("user.dir")).resolve("src");
-        String path = dir.resolve("shared_Directory1").toString() + File.separator + fileName;
+        String path = dir.resolve(this.shared_dir).toString() + File.separator + fileName;
         System.out.println(path);
 
         File file = new File(path);
+
         System.out.println(file.getName());
 
 

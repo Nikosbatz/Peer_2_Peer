@@ -14,23 +14,27 @@ public class Peer {
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String token;
-    private int port;
+
+
     private String ip;
 
+    private int port = 1112;
+
+    private String shared_dir = "shared_Directory1";
     public static Boolean processRunning;
 
-    public Peer(String trackerHost, int trackerPort, int port) throws IOException {
+    public Peer(String trackerHost, int trackerPort) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
         oos = new ObjectOutputStream(socket.getOutputStream());
         ois = new ObjectInputStream(socket.getInputStream());
-        this.port = port;
+
     }
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
 
 
-        String shared_dir = currentDir.resolve("shared_Directory1").toString();
+        String shared_dir = currentDir.resolve(this.shared_dir).toString();
         System.out.println(shared_dir);
         File dir = new File(shared_dir);
 
@@ -205,6 +209,7 @@ public class Peer {
 
     private void handleFileDetailsResponse(Message responseMessage) throws IOException, ClassNotFoundException {
         ArrayList <PeerInfo> peersWithFile = responseMessage.getPeers();
+
         HashMap<PeerInfo,Double> peerScores = new HashMap<>();
         double bestScore = 200000000;
         PeerInfo bestPeer = null;
@@ -262,7 +267,7 @@ public class Peer {
                 Message fileResponse = (Message) peerIn.readObject();
 
                 if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
-                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "downloads");
+                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+this.shared_dir);
                     Files.createDirectories(downloadPath);
                     downloadPath = downloadPath.resolve(fileName);
                     Files.write(downloadPath, fileResponse.getFileContent());
@@ -383,10 +388,10 @@ public class Peer {
 
     public static void main(String[] args) {
         try {
-            Peer peer = new Peer("localhost", 1111, 1112);
+            Peer peer = new Peer("localhost", 1111);
 
             // Start a PeerServer where Peer accepts requests from other Peers or the Tracker.
-            new Thread(new peerServer()).start();
+            new Thread(new peerServer(peer.shared_dir, peer.port)).start();
 
             // Defines the Files that Peer wants to share
             peer.getSharedDirectoryInfo();

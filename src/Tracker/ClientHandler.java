@@ -234,7 +234,7 @@ class ClientHandler implements Runnable {
             oos.writeObject(new Message(MessageType.ERROR, "No peers have the file"));
         } else {
             // Respond with the peers that have the file requested
-            Message response = new Message(MessageType.RESPONSE);
+            Message response = new Message(MessageType.RESPONSE, requestedFile);
             response.setPeers(peersWithFile);
             oos.writeObject(response);
         }
@@ -283,8 +283,6 @@ class ClientHandler implements Runnable {
             // Increment the failures counter of the seeder peer.
             peers.get(msg.getUsername()).incCountfailures();
         }
-
-
     }
 
     /*
