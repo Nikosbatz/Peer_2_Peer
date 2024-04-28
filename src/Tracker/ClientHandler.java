@@ -169,8 +169,11 @@ class ClientHandler implements Runnable {
         // If client with current token is connected
         if (connectedPeers.containsKey(token)) {
             PeerInfo peer = connectedPeers.get(token);
-            peer.setToken(null);  // Invalidate the token
-            msg = new Message(MessageType.LOGOUT_SUCCESS, "EKANE LOGOUT");
+            connectedPeers.remove(token);
+            peer.setToken(null);// Invalidate the token
+            peer.setIp(null);
+            peer.setPort(0);
+            msg = new Message(MessageType.LOGOUT_SUCCESS, "Successful logout");
             oos.writeObject(msg);
 
             connectedPeers.remove(token);
