@@ -52,9 +52,7 @@ public class PeerInfo implements Serializable {
         return this.token;
     }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
+    public void setToken(String token) {this.token = token;}
 
     public int getPort() {
         return port;

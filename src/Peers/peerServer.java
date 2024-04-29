@@ -7,25 +7,24 @@ public class peerServer implements Runnable{
 
     private String shared_dir;
     private int port;
+    ServerSocket server;
 
-    public peerServer(String shared_dir, int port){
+    public peerServer(ServerSocket server, String shared_dir){
+        this.server = server;
         this.shared_dir = shared_dir;
-        this.port = port;
     }
 
     public void run(){
         try{
 
-            ServerSocket server = new ServerSocket(this.port);
-
             while(true) {
-                Socket client = server.accept();
+                Socket client = this.server.accept();
                 new Thread(new ClientHandler(client, this.shared_dir)).start();
             }
 
         }
         catch (IOException e){
-            e.printStackTrace();
+            System.out.println("Server is closed...");
         }
 
     }
