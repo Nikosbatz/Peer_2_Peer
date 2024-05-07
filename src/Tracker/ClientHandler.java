@@ -7,6 +7,8 @@ import Peers.MessageType;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -152,7 +154,7 @@ class ClientHandler implements Runnable {
         }
     }
 
-    private void informationFromPeer(Message msg, ObjectOutputStream oos) {
+    private void informationFromPeer(Message msg, ObjectOutputStream oos) throws IOException{
 
         PeerInfo peer = connectedPeers.get(msg.getToken());
         String[] msgData = msg.getContent().split(",");
@@ -160,7 +162,28 @@ class ClientHandler implements Runnable {
         peer.setIp(msgData[0]);
         peer.setPort(Integer.parseInt(msgData[1]));
         peer.setFiles(msg.getFiles());
+        saveToFileDownloadList(msg.getFiles());
 
+    }
+
+    private void saveToFileDownloadList(ArrayList<String> files) throws IOException{
+        String dir = Paths.get(System.getProperty("user.dir")).resolve("src").toString()+"\\ListfileDownload.txt";
+        BufferedReader br = new BufferedReader(new FileReader(dir));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(dir));
+        for (String file: files){
+            String line;
+            Boolean flag = false;
+            while((line = br.readLine()) != null){
+                if (line.equals(file)){
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag){
+                writer.append(file).append("\n");
+                writer.flush();
+            }
+        }
     }
 
     private void performLogout(Message msg, ObjectOutputStream oos) throws IOException {
@@ -169,8 +192,11 @@ class ClientHandler implements Runnable {
         // If client with current token is connected
         if (connectedPeers.containsKey(token)) {
             PeerInfo peer = connectedPeers.get(token);
-            peer.setToken(null);  // Invalidate the token
-            msg = new Message(MessageType.LOGOUT_SUCCESS, "EKANE LOGOUT");
+            connectedPeers.remove(token);
+            peer.setToken(null);// Invalidate the token
+            peer.setIp(null);
+            peer.setPort(0);
+            msg = new Message(MessageType.LOGOUT_SUCCESS, "Successful logout");
             oos.writeObject(msg);
 
             connectedPeers.remove(token);

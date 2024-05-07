@@ -14,6 +14,8 @@ public class Peer {
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String token;
+    private Thread serverThread;
+    private ServerSocket serverSocket;
 
 
     private String ip;
@@ -122,7 +124,7 @@ public class Peer {
                 this.token = null;
             }
             else{
-                System.out.println("DEN KANEI LOGOUT");
+                System.out.println("Unsuccessful logout...");
             }
         }
     }
@@ -202,48 +204,57 @@ public class Peer {
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             responseMessage.setContent(fileName);
-            System.out.println(responseMessage.getType());
+
             handleFileDetailsResponse(responseMessage);
         }
     }
 
     private void handleFileDetailsResponse(Message responseMessage) throws IOException, ClassNotFoundException {
-        ArrayList <PeerInfo> peersWithFile = responseMessage.getPeers();
 
-        HashMap<PeerInfo,Double> peerScores = new HashMap<>();
-        double bestScore = 200000000;
-        PeerInfo bestPeer = null;
-
-
-        // Calculates each peer's score based on Downloads and Failures
-        // Choosing the one with the best ratio after
-        for (PeerInfo peer : peersWithFile) {
-
-            int downloads = peer.getCountDownloads();
-            int failures = peer.getCountFailures();
-            double score = calculateScore(downloads, failures)+checkActive(peer);
-
-            if (score < bestScore) {
-                bestScore = score;
-                bestPeer = peer;
-            }
-            peerScores.put(peer,score);
+        ArrayList<PeerInfo> peersWithFile = responseMessage.getPeers();
+        if (peersWithFile == null) {
+            System.out.println("There aren't any connected Peers that can share this file...");
         }
+        else {
+            HashMap<PeerInfo, Double> peerScores = new HashMap<>();
+            double bestScore = 200000000;
+            PeerInfo bestPeer = null;
 
-        if (bestPeer != null) {
+
+            // Calculates each peer's score based on Downloads and Failures
+            // Choosing the one with the best ratio after
+            for (PeerInfo peer : peersWithFile) {
+
+                int downloads = peer.getCountDownloads();
+                int failures = peer.getCountFailures();
+                double score = calculateScore(downloads, failures) + checkActive(peer);
+
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestPeer = peer;
+                }
+                peerScores.put(peer, score);
+            }
+
+            // Prints the info of every peer that has the file
+            for(PeerInfo peer: peersWithFile){
+                System.out.println("Username: " + peer.getUsername() + "\tIP: " + peer.getIp() + "\tPort: " + peer.getPort());
+            }
+
             Scanner in = new Scanner(System.in);
-            System.out.println("Best peer details:\nUsername: "+bestPeer.getUsername()+"\nIP: "+bestPeer.getIp()+"\nPort: "+bestPeer.getPort());
+            System.out.println("Best peer details:\nUsername: " + bestPeer.getUsername() + "\nIP: " + bestPeer.getIp() + "\nPort: " + bestPeer.getPort());
             System.out.println("Do you want to download the file? y/n");
             String response = in.nextLine();
 
-            // If user wishes to download the file from this peer
-            if(response.equals("y")){
-                initiateDownloadFromPeer(bestPeer, responseMessage.getContent(),peerScores);
+            // If user wishes to download the file from this peer.
+            // Long.MAX_VALUE is the value checkActive returns if the peer is not active.
+            if (response.equals("y") ) {
+                ArrayList<PeerInfo> failedPeers = new ArrayList<>();
+                initiateDownloadFromPeer(bestPeer, responseMessage.getContent(), peerScores, failedPeers);
             }
 
-        } else {
-            System.out.println("No suitable peers found for downloading.");
         }
+
     }
 
     private double calculateScore(int downloads, int failures) {
@@ -283,15 +294,14 @@ public class Peer {
     }
 
     //-----------------Downloading-------------------------
-    private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores) {
+    private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
+
+
         try {
             // Extract peer IP and port
+            System.out.println(bestPeer.getIp() + "     "+bestPeer.getPort());
 
-            String peerIP = bestPeer.getIp();
-            System.out.println(peerIP);
-            int peerPort = bestPeer.getPort();
-
-            try (Socket peerSocket = new Socket(peerIP, peerPort);
+            try (Socket peerSocket = new Socket(bestPeer.getIp(), bestPeer.getPort());
                  ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
                  ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
 
@@ -308,19 +318,22 @@ public class Peer {
                 } else {
                     notifyTrackerFail(bestPeer);
                     System.out.println("Failed to download the file: " + fileResponse.getContent());
-                    retryDownload(fileName, bestPeer, scores);
+                    retryDownload(fileName, bestPeer, scores, failedPeers);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
             System.out.println("Error during file download: " + e.getMessage());
+            notifyTrackerFail(bestPeer);
+            retryDownload(fileName, bestPeer, scores, failedPeers);
         }
     }
 
-    private void retryDownload(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores) {
-        PeerInfo nextBestPeer = getNextBestPeer(filename, failedPeer, scores);
+    private void retryDownload(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
+        failedPeers.add(failedPeer);
+        PeerInfo nextBestPeer = getNextBestPeer(filename, failedPeer, scores, failedPeers);
         if (nextBestPeer != null) {
             System.out.println("Attemting to download from another peer");
-            initiateDownloadFromPeer(nextBestPeer, filename, scores);
+            initiateDownloadFromPeer(nextBestPeer, filename, scores, failedPeers);
 
         } else {
             System.out.println("No other active peers have this file.\n Download terminated....");
@@ -329,15 +342,19 @@ public class Peer {
 
     }
 
-    private PeerInfo getNextBestPeer(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores) {
+    private PeerInfo getNextBestPeer(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
         Map.Entry<PeerInfo, Double> maxEntry = null;
         for (Map.Entry<PeerInfo, Double> entry : scores.entrySet()) {
-            if (maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0 || entry.getKey() != failedPeer) {
+            if ((maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0) && !failedPeers.contains(entry.getKey())) {
                 maxEntry = entry;
-
             }
         }
-        return maxEntry.getKey();
+        if (maxEntry == null){
+            return null;
+        }
+        else {
+            return maxEntry.getKey();
+        }
     }
 
     // Notify Tracker if requested File downloaded succesfully.
@@ -381,6 +398,11 @@ public class Peer {
                     System.out.print("\nPassword: ");
                     password = in.nextLine();
                     login(username, password);
+                    if (this.token != null){
+                        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir));
+                        serverThread.start();
+                    }
+
                     break;
                 case "3":
                     processRunning = false;
@@ -395,6 +417,14 @@ public class Peer {
             switch (choice) {
                 case "1":
                     logOut();
+                    this.serverSocket.close();
+                    try {
+                        System.out.println("Waiting for thread to join...");
+                        this.serverThread.join();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
                     break;
                 case "2":
                     listFiles();
@@ -422,8 +452,11 @@ public class Peer {
         try {
             Peer peer = new Peer("localhost", 1111);
 
+
+            peer.serverSocket = new ServerSocket(peer.getPort());
+
             // Start a PeerServer where Peer accepts requests from other Peers or the Tracker.
-            new Thread(new peerServer(peer.shared_dir, peer.port)).start();
+
 
             // Defines the Files that Peer wants to share
             peer.getSharedDirectoryInfo();

@@ -59,11 +59,9 @@ public class ClientHandler implements Runnable {
 
         Path dir = Paths.get(System.getProperty("user.dir")).resolve("src");
         String path = dir.resolve(this.shared_dir).toString() + File.separator + fileName;
-        System.out.println(path);
 
         File file = new File(path);
 
-        System.out.println(file.getName());
 
 
 
