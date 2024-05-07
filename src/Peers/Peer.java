@@ -250,6 +250,38 @@ public class Peer {
         return Math.pow(0.75, downloads) * Math.pow(1.25, failures);//0.75^count_downloads*1.25^count_failures.
     }
 
+    //--------------------File partitioning-----------------
+    // Method to partition a file into segments
+    public void partitionFile(File file) throws IOException {
+        int partSize = 512 * 1024; // 512 KB per part
+        byte[] buffer = new byte[partSize];
+        String fileName = file.getName();
+
+        try (FileInputStream fis = new FileInputStream(file);
+             BufferedInputStream bis = new BufferedInputStream(fis)) {
+            int bytesAmount;
+            int partCounter = 1;
+            while ((bytesAmount = bis.read(buffer)) > 0) {
+                String filePartName = String.format("%s.part_%03d", fileName, partCounter++);
+                File newFile = new File(shared_dir, filePartName);
+                try (FileOutputStream out = new FileOutputStream(newFile)) {
+                    out.write(buffer, 0, bytesAmount);
+                }
+            }
+        }
+    }
+
+    // Initialize and partition files when the peer is set as a seeder
+    public void initializeSeeder(String directoryPath) throws IOException {
+        File dir = new File(directoryPath);
+        File[] directoryListing = dir.listFiles();
+        if (directoryListing != null) {
+            for (File child : directoryListing) {
+                partitionFile(child);
+            }
+        }
+    }
+
     //-----------------Downloading-------------------------
     private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores) {
         try {
@@ -326,7 +358,7 @@ public class Peer {
 
 
 
-    public void showMenu () throws IOException, ClassNotFoundException{
+    public void showMenu () throws IOException, ClassNotFoundException {
         Scanner in = new Scanner(System.in);
 
         // If peer in not connected show the login/register forms
@@ -335,7 +367,7 @@ public class Peer {
             String password;
             System.out.print("Choose an option:\n1. Registration\n2. Login\n3. Exit\nEnter your choice: ");
             String choice = in.nextLine();
-            switch (choice){
+            switch (choice) {
                 case "1":
                     System.out.print("Username: ");
                     username = in.nextLine();
@@ -360,32 +392,32 @@ public class Peer {
             //TODO make the operations menu
             System.out.print("Choose an option:\n1.Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n5.Exit \nEnter your choice: ");
             String choice = in.nextLine();
-            switch (choice){
+            switch (choice) {
                 case "1":
                     logOut();
                     break;
                 case "2":
                     listFiles();
                     break;
-                case"3":
+                case "3":
                     System.out.println("Enter the filename for details\n");
-                    String details_file=in.nextLine();
+                    String details_file = in.nextLine();
                     requestFileDetails(details_file);
                     break;
                 case "4":
                     System.out.println("Enter the filename to download");
-                    String download_file=in.nextLine();
+                    String download_file = in.nextLine();
                     requestFileDetails(download_file);
                     break;
-                case"5":
+                case "5":
                     System.out.println("exiting...");
                     break;
             }
 
         }
+
+
     }
-
-
     public static void main(String[] args) {
         try {
             Peer peer = new Peer("localhost", 1111);
