@@ -1,45 +1,37 @@
 package Tracker;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PeerInfo implements Serializable {
-
     private ArrayList<String> files;
     private String username;
     private String password;
-    private String token;//session token to manage logins and logout
-
-
-
+    private String token; // session token to manage logins and logout
     private int port;
     private String ip;
-    private int countDownloads ;
-    private int countFailures ;
-    private double score;  // Timestamp of the last heartbeat
+    private int countDownloads;
+    private int countFailures;
+    private double score;
+    private List<Integer> pieces; // List to store pieces of the file the peer has
+    private boolean seederBit; // Indicates if the peer is the original seeder
 
-    public PeerInfo(String username,String password) {
-
+    public PeerInfo(String username, String password) {
         this.username = username;
         this.password = password;
-        // Initially, there is no token until login is successful
         this.token = null;
-
-        this.countDownloads=0;
-        this.countFailures=0;
+        this.countDownloads = 0;
+        this.countFailures = 0;
+        this.pieces = new ArrayList<>();
+        this.seederBit = false;
     }
 
     // Getters
-
     public ArrayList<String> getFiles() {
         return files;
     }
 
-    // Setters
-
-    public void setFiles(ArrayList<String> files) {
-        this.files = files;
-    }
     public String getUsername() {
         return this.username;
     }
@@ -52,36 +44,68 @@ public class PeerInfo implements Serializable {
         return this.token;
     }
 
-    public void setToken(String token) {this.token = token;}
-
     public int getPort() {
         return port;
-    }
-    public void setPort(int port){
-        this.port=port;
     }
 
     public double getScore() {
         return score;
     }
 
-    public void setScore(double score){
-        this.score=score;
+    public int getCountFailures() {
+        return countFailures;
     }
-    public int getCountFailures() {return countFailures;}
 
-    public void incCountfailures() {this.countFailures ++;}
-
-    public int getCountDownloads() {return countDownloads;}
-
-    public void incCountDownloads() {this.countDownloads++;}
-
+    public int getCountDownloads() {
+        return countDownloads;
+    }
 
     public String getIp() {
         return ip;
     }
 
+    public List<Integer> getPieces() {
+        return pieces;
+    }
+
+    public boolean isSeeder() {
+        return seederBit;
+    }
+
+    // Setters
+    public void setFiles(ArrayList<String> files) {
+        this.files = files;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+    public void incCountDownloads() {
+        this.countDownloads++;
+    }
+    public void incCountfailures() {
+        this.countFailures++;
+    }
+
     public void setIp(String ip) {
         this.ip = ip;
     }
+
+    public void setPieces(List<Integer> pieces) {
+        this.pieces = pieces;
+    }
+
+    public void setSeeder(boolean seederBit) {
+        this.seederBit = seederBit;
+    }
+
+
 }

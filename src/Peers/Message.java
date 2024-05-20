@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Message implements Serializable {
     private MessageType type;  // Enum for message type
@@ -17,6 +18,7 @@ public class Message implements Serializable {
     private  String username;
     private String password;
     private ArrayList<PeerInfo> peers ;
+    private Map<String, Boolean> fileDetails; // To store file name and seeder status
 
 
 
@@ -55,6 +57,13 @@ public class Message implements Serializable {
         return token;
     }
 
+    public Map<String, Boolean> getFileDetails() {
+        return fileDetails;
+    }
+
+    public void addFileDetail(String fileName, boolean isSeeder) {
+        this.fileDetails.put(fileName, isSeeder);
+    }
 
     public String getContent() {
         return content;

@@ -54,11 +54,6 @@ public class Peer {
         }
 
     }
-
-
-
-
-
     // ---------User authentication methods---------
     public void registerWithTracker(String username, String password) throws IOException, ClassNotFoundException {
         Message msg = new Message(MessageType.REGISTER);
@@ -99,6 +94,14 @@ public class Peer {
 
                 //  send additional information back to the tracker (INFORM METHOD)
                 sendAdditionalInfo();
+
+                // Check if the peer is the initial seeder for any files
+                ArrayList<String> files = getSharedDirectoryInfo();
+                if (files != null && !files.isEmpty()) {
+                    notifyTrackerSeederStatus();
+                } else {
+                    startPeerServer();
+                }
             } else {
                 System.out.println("Login failed. Reason: " + responseMessage.getContent());
             }
@@ -293,6 +296,90 @@ public class Peer {
         }
     }
 
+    //seeder inform 1
+    //if the peer is the initial seeder for the file
+    //1.when the seeder receives the token id from a successful login he updates
+    //the tracker with the communication details(ip,port) for the current contents of the shared directory and
+    // that he can work as a seeder for them
+    private void notifyTrackerSeederStatus() throws IOException {
+        // Get the shared directory info
+        ArrayList<String> files = getSharedDirectoryInfo();
+
+        // Construct the message to inform the tracker
+        Message seederInfoMessage = new Message(MessageType.INFORM);
+        seederInfoMessage.setToken(this.token);
+        seederInfoMessage.setFiles(files);
+
+        // Set the peer as a seeder for the files in the shared directory
+        for (String file : files) {
+            //  the peer has all pieces of the file, indicating seeder status
+            seederInfoMessage.addFileDetail(file, true);
+        }
+
+        // Send the message to the tracker
+        oos.writeObject(seederInfoMessage);
+        startPeerServer();
+    }
+    private void startPeerServer() throws IOException {
+        this.serverSocket = new ServerSocket(getPort());
+        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir));
+        serverThread.start();
+    }
+    //Select functionality
+    public void select() throws IOException, ClassNotFoundException {
+        // Get the list of files available in the network
+        Message listRequest = new Message(MessageType.LIST_FILES);
+        oos.writeObject(listRequest);
+
+        // Wait for the response from the tracker
+        Object response = ois.readObject();
+        if (response instanceof Message) {
+            Message responseMessage = (Message) response;
+            if (!responseMessage.getContent().isEmpty()) {
+                ArrayList<String> availableFiles = new ArrayList<>(Arrays.asList(responseMessage.getContent().split(",")));
+
+                // Get the list of files the peer already has
+                ArrayList<String> localFiles = getLocalFiles();
+
+                // Filter out the files the peer already has
+                availableFiles.removeAll(localFiles);
+
+                if (!availableFiles.isEmpty()) {
+                    // Randomly select a file from the remaining list
+                    Random random = new Random();
+                    String selectedFile = availableFiles.get(random.nextInt(availableFiles.size()));
+
+                    System.out.println("Selected file for download: " + selectedFile);
+
+                    // Initiate the download for the selected file
+                    requestFileDetails(selectedFile);
+                } else {
+                    System.out.println("All available files are already downloaded.");
+                }
+            } else {
+                System.out.println("No files available in the system.");
+            }
+        } else {
+            System.out.println("Received an invalid response from the tracker.");
+        }
+    }
+
+    private ArrayList<String> getLocalFiles() {
+        Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src").resolve(shared_dir);
+        File dir = new File(currentDir.toString());
+        if (dir.listFiles() != null) {
+            ArrayList<File> files = new ArrayList<>(Arrays.asList(dir.listFiles()));
+            ArrayList<String> fileNames = new ArrayList<>();
+            for (File file : files) {
+                fileNames.add(file.getName());
+            }
+            return fileNames;
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+
     //-----------------Downloading-------------------------
     private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
 
@@ -338,8 +425,6 @@ public class Peer {
         } else {
             System.out.println("No other active peers have this file.\n Download terminated....");
         }
-
-
     }
 
     private PeerInfo getNextBestPeer(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
