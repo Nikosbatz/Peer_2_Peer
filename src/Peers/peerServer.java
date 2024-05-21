@@ -37,6 +37,7 @@ public class peerServer implements Runnable {
 
     }
 
+    //TODO
     //First implementation for the sake of seeder-serve method
     class SeederHandler implements Runnable {
         private Socket socket;

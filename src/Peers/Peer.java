@@ -34,10 +34,8 @@ public class Peer {
     private ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
-
-
         String shared_dir = currentDir.resolve(this.shared_dir).toString();
-        System.out.println(shared_dir);
+
         File dir = new File(shared_dir);
 
         // if directory is not empty
@@ -102,6 +100,7 @@ public class Peer {
                     ArrayList<String> files = getSharedDirectoryInfo();
                     if (files != null && !files.isEmpty()) {
                         notifyTrackerSeederStatus();
+                        initializeSeeder();
                     }
                 }
                 // Else just Login ( Tracker is already aware of the files that the Peer owns )
@@ -262,17 +261,25 @@ public class Peer {
     //--------------------File partitioning-----------------
     // Method to partition a file into segments
     public void partitionFile(File file) throws IOException {
-        int partSize = 512 * 1024; // 512 KB per part
+        int partSize = 1024 * 1024; // 1MB per part
         byte[] buffer = new byte[partSize];
-        String fileName = file.getName();
 
+        // Get the name of the file without the extension (.txt)
+        String fileName = file.getName();
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
+            fileName = fileName.substring(0, dotIndex);
+        }
+
+        // Read the file that is about to be Partitioned
         try (FileInputStream fis = new FileInputStream(file);
              BufferedInputStream bis = new BufferedInputStream(fis)) {
             int bytesAmount;
             int partCounter = 1;
+            // For each 1MB create a new file
             while ((bytesAmount = bis.read(buffer)) > 0) {
-                String filePartName = String.format("%s.part_%03d", fileName, partCounter++);
-                File newFile = new File(shared_dir, filePartName);
+                String filePartName = String.format("%s.part_%d.txt", fileName, partCounter++);
+                File newFile = new File("src\\"+shared_dir, filePartName);
                 try (FileOutputStream out = new FileOutputStream(newFile)) {
                     out.write(buffer, 0, bytesAmount);
                 }
@@ -281,7 +288,11 @@ public class Peer {
     }
 
     // Initialize and partition files when the peer is set as a seeder
-    public void initializeSeeder(String directoryPath) throws IOException {
+    public void initializeSeeder() throws IOException {
+        // Path for this peer's shared_directory
+        Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
+        String directoryPath = currentDir.resolve(this.shared_dir).toString();
+
         File dir = new File(directoryPath);
         File[] directoryListing = dir.listFiles();
         if (directoryListing != null) {
