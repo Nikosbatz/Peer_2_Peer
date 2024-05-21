@@ -5,6 +5,7 @@ import Tracker.PeerInfo;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +19,7 @@ public class Message implements Serializable {
     private  String username;
     private String password;
     private ArrayList<PeerInfo> peers ;
-    private Map<String, Boolean> fileDetails; // To store file name and seeder status
+    private HashMap<String, Boolean> fileDetails = new HashMap<String, Boolean>(); // To store file name and seeder status
 
 
 
@@ -60,6 +61,7 @@ public class Message implements Serializable {
     public Map<String, Boolean> getFileDetails() {
         return fileDetails;
     }
+
 
     public void addFileDetail(String fileName, boolean isSeeder) {
         this.fileDetails.put(fileName, isSeeder);

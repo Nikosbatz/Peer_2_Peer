@@ -2,10 +2,12 @@ package Tracker;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class PeerInfo implements Serializable {
     private ArrayList<String> files;
+    private HashMap<String, Boolean> isFileInitSeeder = new HashMap<>();
     private String username;
     private String password;
     private String token; // session token to manage logins and logout
@@ -108,4 +110,11 @@ public class PeerInfo implements Serializable {
     }
 
 
+    public HashMap<String, Boolean> getIsFileInitSeeder() {
+        return isFileInitSeeder;
+    }
+
+    public void setIsFileInitSeeder(HashMap<String, Boolean> isFileInitSeeder) {
+        this.isFileInitSeeder = isFileInitSeeder;
+    }
 }

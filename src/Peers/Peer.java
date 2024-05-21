@@ -17,7 +17,7 @@ public class Peer {
     private Thread serverThread;
     private ServerSocket serverSocket;
 
-
+    private Boolean isFirstLogin = true;
     private String ip;
 
     private int port = 1112;
@@ -92,15 +92,21 @@ public class Peer {
                 System.out.println("Assigned IP: " + ipAddress);
                 System.out.println("Assigned Port: " + port);
 
-                //  send additional information back to the tracker (INFORM METHOD)
-                sendAdditionalInfo();
+                // Start the Peer's Server to start exchanging files with other Peers
+                startPeerServer();
 
-                // Check if the peer is the initial seeder for any files
-                ArrayList<String> files = getSharedDirectoryInfo();
-                if (files != null && !files.isEmpty()) {
-                    notifyTrackerSeederStatus();
-                } else {
-                    startPeerServer();
+                // If this is the first LogIn of this Peer inform
+                // Tracker of the files in possession
+                if (isFirstLogin) {
+                    // Check if the peer is the initial seeder for any files
+                    ArrayList<String> files = getSharedDirectoryInfo();
+                    if (files != null && !files.isEmpty()) {
+                        notifyTrackerSeederStatus();
+                    }
+                }
+                // Else just Login ( Tracker is already aware of the files that the Peer owns )
+                else {
+                    isFirstLogin = false;
                 }
             } else {
                 System.out.println("Login failed. Reason: " + responseMessage.getContent());
@@ -130,17 +136,6 @@ public class Peer {
                 System.out.println("Unsuccessful logout...");
             }
         }
-    }
-    //login help function
-    private void sendAdditionalInfo() throws IOException {
-
-        String ip = getIp();
-        int port = getPort();
-
-        Message additionalInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
-        additionalInfoMessage.setToken(this.token);
-        additionalInfoMessage.setFiles(getSharedDirectoryInfo());
-        oos.writeObject(additionalInfoMessage);
     }
 
 //-----------File managment methods----------
@@ -306,19 +301,20 @@ public class Peer {
         ArrayList<String> files = getSharedDirectoryInfo();
 
         // Construct the message to inform the tracker
-        Message seederInfoMessage = new Message(MessageType.INFORM);
+        String ip = getIp();
+        int port = getPort();
+        Message seederInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
         seederInfoMessage.setToken(this.token);
-        seederInfoMessage.setFiles(files);
+        seederInfoMessage.setFiles(getSharedDirectoryInfo());
 
         // Set the peer as a seeder for the files in the shared directory
         for (String file : files) {
-            //  the peer has all pieces of the file, indicating seeder status
+            // the peer has all pieces of the file, indicating seeder status
             seederInfoMessage.addFileDetail(file, true);
         }
 
         // Send the message to the tracker
         oos.writeObject(seederInfoMessage);
-        startPeerServer();
     }
     private void startPeerServer() throws IOException {
         this.serverSocket = new ServerSocket(getPort());
@@ -536,9 +532,6 @@ public class Peer {
     public static void main(String[] args) {
         try {
             Peer peer = new Peer("localhost", 1111);
-
-
-            peer.serverSocket = new ServerSocket(peer.getPort());
 
             // Start a PeerServer where Peer accepts requests from other Peers or the Tracker.
 

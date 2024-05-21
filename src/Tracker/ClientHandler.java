@@ -70,6 +70,7 @@ class ClientHandler implements Runnable {
                 performLogout(msg, oos);
                 break;
             case INFORM:
+                System.out.println(msg.getContent());
                 informationFromPeer(msg, oos);
                 break;
             case DETAILS:
@@ -157,12 +158,24 @@ class ClientHandler implements Runnable {
     private void informationFromPeer(Message msg, ObjectOutputStream oos) throws IOException{
 
         PeerInfo peer = connectedPeers.get(msg.getToken());
-        String[] msgData = msg.getContent().split(",");
-        // not best practice with split
-        peer.setIp(msgData[0]);
-        peer.setPort(Integer.parseInt(msgData[1]));
-        peer.setFiles(msg.getFiles());
-        saveToFileDownloadList(msg.getFiles());
+
+        // Check if Message intends to inform Tracker about Peer's IP and Port
+        if (msg.getContent() != null) {
+            String[] msgData = msg.getContent().split(",");
+            // not best practice with split
+            peer.setIp(msgData[0]);
+            peer.setPort(Integer.parseInt(msgData[1]));
+        }
+
+        // If Message contains HashMap FileDetails
+        // Setting the initialSeederBit for each file that this peer is initial seeder
+        if (!msg.getFileDetails().isEmpty()){
+            peer.setFiles(msg.getFiles());
+            saveToFileDownloadList(msg.getFiles());
+            for (String fileName: msg.getFileDetails().keySet()){
+                peer.getIsFileInitSeeder().put(fileName, true);
+            }
+        }
 
     }
 
@@ -262,6 +275,7 @@ class ClientHandler implements Runnable {
             // Respond with the peers that have the file requested
             Message response = new Message(MessageType.RESPONSE, requestedFile);
             response.setPeers(peersWithFile);
+            System.out.println(peersWithFile.getLast().getIsFileInitSeeder().get(requestedFile));
             oos.writeObject(response);
         }
     }
