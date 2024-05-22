@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -17,7 +18,7 @@ public class peerServer implements Runnable {
     private String shared_dir;
     private int port;
     ServerSocket server;
-    private ArrayList<Message> requests = new ArrayList<>();
+    private HashMap<Message, Socket> requests = new HashMap();
 
     public peerServer(ServerSocket server, String shared_dir) {
         this.server = server;
@@ -43,7 +44,7 @@ public class peerServer implements Runnable {
                 }
 
                 // Start the thread to initiate Collaborative download.
-                new Thread ( new ColabDownloadHandler(requests)).start();
+                new Thread ( new ColabDownloadHandler(requests, this.shared_dir)).start();
 
             });
             daemonThread.setDaemon(true);

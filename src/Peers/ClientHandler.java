@@ -5,14 +5,15 @@ import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class ClientHandler implements Runnable {
 
     Socket client;
     String shared_dir;
-    ArrayList<Message> requests;
+    HashMap<Message, Socket> requests;
 
-    public ClientHandler(Socket client, String shared_dir, ArrayList<Message> requests) {
+    public ClientHandler(Socket client, String shared_dir, HashMap<Message, Socket> requests) {
 
         this.client = client;
         this.shared_dir = shared_dir;
@@ -36,7 +37,7 @@ public class ClientHandler implements Runnable {
                         break;
 
                     case DOWNLOAD_REQUEST:
-                        requests.add((Message) msg);
+                        requests.put((Message) msg, client);
                         requests.notify();
 
                         //handleDownloadRequest(((Message) msg).getContent(), oos);
