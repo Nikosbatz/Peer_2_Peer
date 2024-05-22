@@ -4,16 +4,19 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 public class ClientHandler implements Runnable {
 
     Socket client;
     String shared_dir;
+    ArrayList<Message> requests;
 
-    public ClientHandler(Socket client, String shared_dir) {
+    public ClientHandler(Socket client, String shared_dir, ArrayList<Message> requests) {
 
         this.client = client;
         this.shared_dir = shared_dir;
+        this.requests = requests;
     }
 
 
@@ -33,7 +36,10 @@ public class ClientHandler implements Runnable {
                         break;
 
                     case DOWNLOAD_REQUEST:
-                        handleDownloadRequest(((Message) msg).getContent(), oos);
+                        requests.add((Message) msg);
+                        requests.notify();
+
+                        //handleDownloadRequest(((Message) msg).getContent(), oos);
                         break;
                     default:
                         System.out.println("Received an unrecognized message type.");

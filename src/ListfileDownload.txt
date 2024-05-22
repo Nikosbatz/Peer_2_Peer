@@ -1,1 +1,6 @@
+file1.part_1.txt
+file1.part_2.txt
+file1.part_3.txt
+file1.part_4.txt
+file1.part_5.txt
 file1.txt

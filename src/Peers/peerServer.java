@@ -17,6 +17,7 @@ public class peerServer implements Runnable {
     private String shared_dir;
     private int port;
     ServerSocket server;
+    private ArrayList<Message> requests = new ArrayList<>();
 
     public peerServer(ServerSocket server, String shared_dir) {
         this.server = server;
@@ -26,9 +27,30 @@ public class peerServer implements Runnable {
     public void run() {
         try {
 
+            Thread daemonThread = new Thread(() -> {
+
+                try {
+                    requests.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                long startTime = System.currentTimeMillis();
+
+                while ( true ){
+                    if (System.currentTimeMillis() - startTime >= 200){
+                        break;
+                    }
+                }
+
+                // Start the thread to initiate Collaborative download.
+                new Thread ( new ColabDownloadHandler(requests)).start();
+
+            });
+            daemonThread.setDaemon(true);
+            daemonThread.start();
             while (true) {
                 Socket client = this.server.accept();
-                new Thread(new ClientHandler(client, this.shared_dir)).start();
+                new Thread(new ClientHandler(client, this.shared_dir, this.requests)).start();
             }
 
         } catch (IOException e) {
