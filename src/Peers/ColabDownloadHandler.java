@@ -2,12 +2,10 @@ package Peers;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class ColabDownloadHandler implements  Runnable{
 
@@ -15,21 +13,21 @@ public class ColabDownloadHandler implements  Runnable{
     private ObjectOutputStream oos;
     private ObjectInputStream ois;
     private String shared_dir;
-
+    private Map<String, HashMap<Integer, String>> filePartsReceivedFrom;
     public ColabDownloadHandler(HashMap<Message, Socket> requests, String shared_dir){
         this.requests = requests;
         this.shared_dir = shared_dir;
+        this.filePartsReceivedFrom = filePartsReceivedFrom;
+
     }
+
+    private ObjectOutputStream oos;
 
     @Override
     public void run() {
 
         if (this.requests.size() == 1){
-            try {
-                handleSingleRequest();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            handleSingleRequest();
         }
         else {
 
@@ -37,7 +35,7 @@ public class ColabDownloadHandler implements  Runnable{
 
     }
 
-    private void handleSingleRequest() throws IOException {
+    private void handleSingleRequest(){
 
         Random random = new Random();
         Socket socket = null;
@@ -92,6 +90,63 @@ public class ColabDownloadHandler implements  Runnable{
             oos.writeObject(new Message(MessageType.ERROR, "File not found or inaccessible."));
         }
     }
+    private void sendNegativeResponse() throws IOException {
+        Message response= new Message(MessageType.ERROR,"Requested file not available.");
+        oos.writeObject(response);
+    }
+    private void requestMissingParts(String peerUsername, String fileName) throws IOException {
+        ArrayList<String> missingParts = getMissingParts(fileName);
+        if (!missingParts.isEmpty()) {
+            Message request = new Message(MessageType.DOWNLOAD_REQUEST, fileName);
+            request.setContent(missingParts.get(new Random().nextInt(missingParts.size())));
+            oos.writeObject(request);
+        }
+    }
+    private ArrayList<String> getMissingParts(String fileName) {
+        int totalParts = getTotalPartsCount(fileName);
+        ArrayList<String> missingParts = new ArrayList<>();
 
+        HashMap<Integer, String> receivedParts = filePartsReceivedFrom.getOrDefault(fileName, new HashMap<>());
+        for (int i = 0; i < totalParts; i++) {
+            if (!receivedParts.containsKey(i)) {
+                missingParts.add(fileName + ".part" + i);
+            }
+        }
 
+        return missingParts;
+    }
+    private int getTotalPartsCount(String fileName) {
+        // each part is 1MB
+        Path filePath = Paths.get(sharedDir, fileName);
+        if (Files.exists(filePath)) {
+            try {
+                long fileSize = Files.size(filePath);
+                int partSize = 1024 * 1024; // 1MB
+                return (int) Math.ceil((double) fileSize / partSize);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return 10; //  placeholder
+    }
+
+    private Message getBestRequest(ArrayList<Message> requests) {
+        //  the request with the highest priority or from the peer with the best performance
+        return requests.get(0); // Placeholder return
+    }
+
+    private Message getFrequentRequest(ArrayList<Message> requests) {
+        HashMap<String, Integer> peerRequestCount = new HashMap<>();
+        for (Message request : requests) {
+            peerRequestCount.put(request.getUsername(), peerRequestCount.getOrDefault(request.getUsername(), 0) + 1);
+        }
+
+        String frequentPeer = Collections.max(peerRequestCount.entrySet(), Map.Entry.comparingByValue()).getKey();
+        for (Message request : requests) {
+            if (request.getUsername().equals(frequentPeer)) {
+                return request;
+            }
+        }
+        return requests.get(0); // Fallback to the first request
+    }
 }
