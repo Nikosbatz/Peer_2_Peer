@@ -29,22 +29,29 @@ public class peerServer implements Runnable {
         try {
 
             Thread daemonThread = new Thread(() -> {
+                // Daemon thread runs always in the background
+                while(true) {
+                    synchronized (requests) {
 
-                try {
-                    requests.wait();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                long startTime = System.currentTimeMillis();
+                        try {
+                            // Wait() until a download request is sent
+                            requests.wait();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                        long startTime = System.currentTimeMillis();
 
-                while ( true ){
-                    if (System.currentTimeMillis() - startTime >= 200){
-                        break;
+                        // Wait until 200 ms have passed
+                        while (true) {
+                            if (System.currentTimeMillis() - startTime >= 200) {
+                                break;
+                            }
+                        }
+
+                        // Start the thread to initiate Collaborative download.
+                        new Thread(new ColabDownloadHandler(requests, this.shared_dir)).start();
                     }
                 }
-
-                // Start the thread to initiate Collaborative download.
-                new Thread ( new ColabDownloadHandler(requests, this.shared_dir)).start();
 
             });
             daemonThread.setDaemon(true);

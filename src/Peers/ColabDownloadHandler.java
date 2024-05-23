@@ -21,13 +21,15 @@ public class ColabDownloadHandler implements  Runnable{
 
     }
 
-    private ObjectOutputStream oos;
-
     @Override
     public void run() {
 
         if (this.requests.size() == 1){
-            handleSingleRequest();
+            try {
+                handleSingleRequest();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         else {
 
@@ -35,7 +37,8 @@ public class ColabDownloadHandler implements  Runnable{
 
     }
 
-    private void handleSingleRequest(){
+    // In case there is only 1 Request in the requests buffer
+    private void handleSingleRequest() throws IOException {
 
         Random random = new Random();
         Socket socket = null;
@@ -47,7 +50,16 @@ public class ColabDownloadHandler implements  Runnable{
             request = key;
         }
 
-        ArrayList<String> fragments = request.getFileFragments();
+        // Fragments of the file that the client requests
+        ArrayList<String> fragments = null;
+        String file;
+
+        // Retrieve the only pair from the hashmap
+        for (String key: request.getFragments().keySet()){
+            fragments = request.getFragments().get(key);
+            file = key;
+        }
+
         String selectedFragment = fragments.get(random.nextInt(fragments.size()));
 
         // For debugging
@@ -55,7 +67,7 @@ public class ColabDownloadHandler implements  Runnable{
         //
 
         initObjectStreams(socket);
-        handleDownloadRequest(selectedFragment);
+        initUpload(selectedFragment);
 
 
     }
@@ -66,17 +78,12 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
 
-    private void handleDownloadRequest(String fileName) throws IOException {
-
-
+    private void initUpload(String fileName) throws IOException {
 
         Path dir = Paths.get(System.getProperty("user.dir")).resolve("src");
         String path = dir.resolve(this.shared_dir).toString() + File.separator + fileName;
 
         File file = new File(path);
-
-
-
 
         if (file.exists() && file.isFile()) {
             // Read the file content and send it
@@ -90,6 +97,12 @@ public class ColabDownloadHandler implements  Runnable{
             oos.writeObject(new Message(MessageType.ERROR, "File not found or inaccessible."));
         }
     }
+
+
+
+
+
+    // ------- ANESTIS ---------------
     private void sendNegativeResponse() throws IOException {
         Message response= new Message(MessageType.ERROR,"Requested file not available.");
         oos.writeObject(response);
@@ -117,7 +130,7 @@ public class ColabDownloadHandler implements  Runnable{
     }
     private int getTotalPartsCount(String fileName) {
         // each part is 1MB
-        Path filePath = Paths.get(sharedDir, fileName);
+        Path filePath = Paths.get(this.shared_dir, fileName);
         if (Files.exists(filePath)) {
             try {
                 long fileSize = Files.size(filePath);

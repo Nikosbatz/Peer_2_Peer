@@ -37,8 +37,10 @@ public class ClientHandler implements Runnable {
                         break;
 
                     case DOWNLOAD_REQUEST:
-                        requests.put((Message) msg, client);
-                        requests.notify();
+                        synchronized (requests) {
+                            requests.put((Message) msg, client);
+                            requests.notify();
+                        }
 
                         //handleDownloadRequest(((Message) msg).getContent(), oos);
                         break;

@@ -100,7 +100,6 @@ public class Peer {
                     ArrayList<String> files = getSharedDirectoryInfo();
                     if (files != null && !files.isEmpty()) {
                         notifyTrackerSeederStatus();
-                        initializeSeeder();
                     }
                 }
                 // Else just Login ( Tracker is already aware of the files that the Peer owns )
@@ -260,12 +259,18 @@ public class Peer {
 
     //--------------------File partitioning-----------------
     // Method to partition a file into segments
-    public void partitionFile(File file) throws IOException {
+    public void partitionFile(String fileName) throws IOException {
+
+        // Path for this peer's shared_directory
+        Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
+        String filePath = currentDir.resolve(this.shared_dir).toString() + File.separator + fileName;
+        File file = new File(filePath);
+
+        // Init partitioning buffer size
         int partSize = 1024 * 1024; // 1MB per part
         byte[] buffer = new byte[partSize];
 
         // Get the name of the file without the extension (.txt)
-        String fileName = file.getName();
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
             fileName = fileName.substring(0, dotIndex);
@@ -288,7 +293,7 @@ public class Peer {
     }
 
     // Initialize and partition files when the peer is set as a seeder
-    public void initializeSeeder() throws IOException {
+    /*public void initializeSeeder() throws IOException {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
         String directoryPath = currentDir.resolve(this.shared_dir).toString();
@@ -300,7 +305,7 @@ public class Peer {
                 partitionFile(child);
             }
         }
-    }
+    }*/
 
     //seeder inform 1
     //if the peer is the initial seeder for the file
@@ -308,21 +313,39 @@ public class Peer {
     //the tracker with the communication details(ip,port) for the current contents of the shared directory and
     // that he can work as a seeder for them
     private void notifyTrackerSeederStatus() throws IOException {
-        // Get the shared directory info
-        ArrayList<String> files = getSharedDirectoryInfo();
 
         // Construct the message to inform the tracker
         String ip = getIp();
         int port = getPort();
         Message seederInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
         seederInfoMessage.setToken(this.token);
-        seederInfoMessage.setFiles(getSharedDirectoryInfo());
 
-        // Set the peer as a seeder for the files in the shared directory
-        for (String file : files) {
-            // the peer has all pieces of the file, indicating seeder status
-            seederInfoMessage.addFileDetail(file, true);
+
+        // Get the shared directory info
+        ArrayList<String> files = getSharedDirectoryInfo();
+        //HashMap <name of file, list of its fragments>
+        HashMap<String, ArrayList<String>> fragments = new HashMap<>();
+        ArrayList<String> tempFragments;
+
+        // Partition each file and organize its fragments in the fragments HashMap
+        for (String file: files){
+            if (!file.contains("part_")){
+                partitionFile(file);
+                // the peer has all pieces of the file, indicating seeder status
+                seederInfoMessage.addFileDetail(file, true);
+                tempFragments = new ArrayList<>();
+                for (String tempFile: getSharedDirectoryInfo()){
+                    if (tempFile.contains("part_") && tempFile.contains(file)){
+                        tempFragments.add(tempFile);
+                    }
+                }
+                // Insert the name of file and the fragments that assemble it
+                fragments.put(file, tempFragments);
+            }
         }
+
+        seederInfoMessage.setFiles(files);
+        seederInfoMessage.setFragments(fragments);
 
         // Send the message to the tracker
         oos.writeObject(seederInfoMessage);

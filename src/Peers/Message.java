@@ -14,7 +14,7 @@ public class Message implements Serializable {
     private String token;     // Identifier of the peer
     private ArrayList<String> files;  // List of files for file operations
     private String content;    // General content of the message
-    private  ArrayList<String> fileFragments;
+    private HashMap<String, ArrayList<String>> fragments;
     private String ip;
     private int port;
     private  String username;
@@ -138,11 +138,11 @@ public class Message implements Serializable {
         this.peers = peers;
     }
 
-    public ArrayList<String> getFileFragments() {
-        return fileFragments;
+    public HashMap<String, ArrayList<String>> getFragments() {
+        return fragments;
     }
 
-    public void setFileFragments(ArrayList<String> fileFragments) {
-        this.fileFragments = fileFragments;
+    public void setFragments(HashMap<String, ArrayList<String>> fragments) {
+        this.fragments = fragments;
     }
 }
