@@ -11,9 +11,9 @@ public class ClientHandler implements Runnable {
 
     Socket client;
     String shared_dir;
-    HashMap<Message, Socket> requests;
+    ArrayList<RequestInfo> requests;
 
-    public ClientHandler(Socket client, String shared_dir, HashMap<Message, Socket> requests) {
+    public ClientHandler(Socket client, String shared_dir, ArrayList<RequestInfo> requests) {
 
         this.client = client;
         this.shared_dir = shared_dir;
@@ -38,7 +38,7 @@ public class ClientHandler implements Runnable {
 
                     case DOWNLOAD_REQUEST:
                         synchronized (requests) {
-                            requests.put((Message) msg, client);
+                            requests.add(new RequestInfo((Message) msg, oos, is));
                             requests.notify();
                         }
 

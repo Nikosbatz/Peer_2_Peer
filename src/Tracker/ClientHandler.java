@@ -169,12 +169,16 @@ class ClientHandler implements Runnable {
         // If Message contains HashMap FileDetails
         // Setting the initialSeederBit for each file that this peer is initial seeder
         if (!msg.getFileDetails().isEmpty()){
+
             // Set whole file names
             peer.setFiles(msg.getFiles());
+
             // Set fragments for each file
             peer.setFragments(msg.getFragments());
+
             // Inform the ListFileDownload.txt
             saveToFileDownloadList(msg.getFiles());
+
             for (String fileName: msg.getFileDetails().keySet()){
                 peer.getIsFileInitSeeder().put(fileName, true);
             }

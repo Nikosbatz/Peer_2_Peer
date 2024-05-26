@@ -18,7 +18,6 @@ public class Peer {
     private ServerSocket serverSocket;
 
     private Boolean isFirstLogin = true;
-    private String ip;
 
     private int port = 1112;
 
@@ -201,11 +200,11 @@ public class Peer {
             Message responseMessage = (Message) response;
             responseMessage.setContent(fileName);
 
-            handleFileDetailsResponse(responseMessage);
+            handleFileDetailsResponse(responseMessage, fileName);
         }
     }
 
-    private void handleFileDetailsResponse(Message responseMessage) throws IOException, ClassNotFoundException {
+    private void handleFileDetailsResponse(Message responseMessage, String fileName) throws IOException, ClassNotFoundException {
 
         ArrayList<PeerInfo> peersWithFile = responseMessage.getPeers();
         if (peersWithFile == null) {
@@ -233,8 +232,11 @@ public class Peer {
             }
 
             // Prints the info of every peer that has the file
+
             for(PeerInfo peer: peersWithFile){
-                System.out.println("Username: " + peer.getUsername() + "\tIP: " + peer.getIp() + "\tPort: " + peer.getPort());
+                System.out.println("Username: " + peer.getUsername() + "\tIP: " + peer.getIp() + "\tPort: " + peer.getPort() +
+                        "\nCount Failures: " + peer.getCountFailures() +"\nCount Downloads: "+ peer.getCountDownloads()+
+                        "\nFragments: " + peer.getFragments().get(fileName).toString() + "\nSeeder-bit: " + peer.getIsFileInitSeeder().get(fileName));
             }
 
             Scanner in = new Scanner(System.in);
@@ -246,7 +248,7 @@ public class Peer {
             // Long.MAX_VALUE is the value checkActive returns if the peer is not active.
             if (response.equals("y") ) {
                 ArrayList<PeerInfo> failedPeers = new ArrayList<>();
-                initiateDownloadFromPeer(bestPeer, responseMessage.getContent(), peerScores, failedPeers);
+                initiateDownloadFromPeer(bestPeer, responseMessage, peerScores, failedPeers);
             }
 
         }
@@ -320,9 +322,9 @@ public class Peer {
         Message seederInfoMessage = new Message(MessageType.INFORM, ip + "," + port );
         seederInfoMessage.setToken(this.token);
 
-
         // Get the shared directory info
         ArrayList<String> files = getSharedDirectoryInfo();
+
         //HashMap <name of file, list of its fragments>
         HashMap<String, ArrayList<String>> fragments = new HashMap<>();
         ArrayList<String> tempFragments;
@@ -334,8 +336,11 @@ public class Peer {
                 // the peer has all pieces of the file, indicating seeder status
                 seederInfoMessage.addFileDetail(file, true);
                 tempFragments = new ArrayList<>();
+
+                // Iterate through the shared_dir files
                 for (String tempFile: getSharedDirectoryInfo()){
-                    if (tempFile.contains("part_") && tempFile.contains(file)){
+                    // If tempFile is part of the current file add it to the fragments
+                    if (tempFile.contains("part_") && tempFile.contains(file.substring(0, file.lastIndexOf('.')))){
                         tempFragments.add(tempFile);
                     }
                 }
@@ -343,7 +348,7 @@ public class Peer {
                 fragments.put(file, tempFragments);
             }
         }
-
+        // Set Message parameters
         seederInfoMessage.setFiles(files);
         seederInfoMessage.setFragments(fragments);
 
@@ -411,8 +416,8 @@ public class Peer {
 
 
     //-----------------Downloading-------------------------
-    private void initiateDownloadFromPeer(PeerInfo bestPeer, String fileName, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
-
+    private void initiateDownloadFromPeer(PeerInfo bestPeer, Message responseMsg, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
+        String fileName = responseMsg.getContent();
 
         try {
             // Extract peer IP and port
@@ -422,35 +427,50 @@ public class Peer {
                  ObjectOutputStream peerOut = new ObjectOutputStream(peerSocket.getOutputStream());
                  ObjectInputStream peerIn = new ObjectInputStream(peerSocket.getInputStream())) {
 
-                peerOut.writeObject(new Message(MessageType.DOWNLOAD_REQUEST, fileName));
+                // Construct download request based on the missing fragments of the file
+                Message msg = new Message(MessageType.DOWNLOAD_REQUEST, fileName);
+                HashMap<String, ArrayList<String>> fragments = new HashMap<>();
+                fragments.put(fileName,getMissingFragments(responseMsg, bestPeer));
+                msg.setFragments(fragments);
+
+                // Send Download request to Peer
+                peerOut.writeObject(msg);
+                System.out.println("TO ESTEILEEE");
+
+
+
                 Message fileResponse = (Message) peerIn.readObject();
+                System.out.println("TO ESTEILEEE");
 
                 if (fileResponse.getType() == MessageType.FILE_RESPONSE && fileResponse.getFileContent() != null) {
                     Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+this.shared_dir);
                     Files.createDirectories(downloadPath);
-                    downloadPath = downloadPath.resolve(fileName);
+                    // fileResponse.getContent contains the name of the file that the seeder sent
+                    downloadPath = downloadPath.resolve(fileResponse.getContent());
                     Files.write(downloadPath, fileResponse.getFileContent());
                     System.out.println("File downloaded successfully to " + downloadPath.toString());
                     notifyTrackerSuccess(fileName, bestPeer);
                 } else {
                     notifyTrackerFail(bestPeer);
                     System.out.println("Failed to download the file: " + fileResponse.getContent());
-                    retryDownload(fileName, bestPeer, scores, failedPeers);
+                    retryDownload(responseMsg, bestPeer, scores, failedPeers);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
             System.out.println("Error during file download: " + e.getMessage());
             notifyTrackerFail(bestPeer);
-            retryDownload(fileName, bestPeer, scores, failedPeers);
+            retryDownload(responseMsg, bestPeer, scores, failedPeers);
         }
     }
 
-    private void retryDownload(String filename, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
+    private void retryDownload(Message responseMsg, PeerInfo failedPeer, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
+        String filename = responseMsg.getContent();
         failedPeers.add(failedPeer);
         PeerInfo nextBestPeer = getNextBestPeer(filename, failedPeer, scores, failedPeers);
         if (nextBestPeer != null) {
             System.out.println("Attemting to download from another peer");
-            initiateDownloadFromPeer(nextBestPeer, filename, scores, failedPeers);
+            initiateDownloadFromPeer(nextBestPeer, responseMsg, scores, failedPeers);
 
         } else {
             System.out.println("No other active peers have this file.\n Download terminated....");
@@ -486,6 +506,23 @@ public class Peer {
     private void notifyTrackerFail(PeerInfo peer){
         Message notifyMsg = new Message(MessageType.NOTIFY_FAIL);
         notifyMsg.setUsername(peer.getUsername());
+    }
+
+    private ArrayList<String> getMissingFragments(Message responseMsg, PeerInfo bestPeer){
+
+        String fileName = responseMsg.getContent();
+        ArrayList<String> fragments = bestPeer.getFragments().get(fileName);
+        ArrayList<String> files = getSharedDirectoryInfo();
+        ArrayList<String> missingFragments = new ArrayList<>();
+
+
+        for (String fragment: fragments){
+            if (!files.contains(fragment)){
+                missingFragments.add(fragment);
+            }
+        }
+
+        return missingFragments;
     }
 
 
@@ -597,7 +634,4 @@ public class Peer {
         return "localhost";
     }
 
-    public void setIp(String ip) {
-        this.ip = ip;
-    }
 }

@@ -18,7 +18,7 @@ public class peerServer implements Runnable {
     private String shared_dir;
     private int port;
     ServerSocket server;
-    private HashMap<Message, Socket> requests = new HashMap();
+    private ArrayList<RequestInfo> requests = new ArrayList<>();
 
     public peerServer(ServerSocket server, String shared_dir) {
         this.server = server;
@@ -125,4 +125,20 @@ public class peerServer implements Runnable {
             }
         }
     }
+}
+
+class RequestInfo{
+
+    ObjectInputStream ois;
+    ObjectOutputStream oos;
+    Socket socket;
+    Message msg;
+
+    public RequestInfo(Message msg, ObjectOutputStream oos, ObjectInputStream ois){
+        this.msg = msg;
+        this.oos = oos;
+        this.ois = ois;
+    }
+
+
 }

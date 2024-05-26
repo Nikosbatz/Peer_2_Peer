@@ -9,12 +9,12 @@ import java.util.*;
 
 public class ColabDownloadHandler implements  Runnable{
 
-    private HashMap<Message, Socket> requests;
+    private ArrayList<RequestInfo> requests;
     private ObjectOutputStream oos;
     private ObjectInputStream ois;
     private String shared_dir;
     private Map<String, HashMap<Integer, String>> filePartsReceivedFrom;
-    public ColabDownloadHandler(HashMap<Message, Socket> requests, String shared_dir){
+    public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir){
         this.requests = requests;
         this.shared_dir = shared_dir;
         this.filePartsReceivedFrom = filePartsReceivedFrom;
@@ -42,39 +42,40 @@ public class ColabDownloadHandler implements  Runnable{
 
         Random random = new Random();
         Socket socket = null;
-        Message request = null;
+        Message msg = null;
 
         // Retrieve the only pair from the hashmap
-        for (Message key: requests.keySet()){
-            socket = requests.get(key);
-            request = key;
-        }
+        msg = requests.getLast().msg;
 
         // Fragments of the file that the client requests
         ArrayList<String> fragments = null;
         String file;
 
         // Retrieve the only pair from the hashmap
-        for (String key: request.getFragments().keySet()){
-            fragments = request.getFragments().get(key);
+        for (String key: msg.getFragments().keySet()){
+            fragments = msg.getFragments().get(key);
             file = key;
         }
 
+        // Get a random fragment from those requested
         String selectedFragment = fragments.get(random.nextInt(fragments.size()));
 
         // For debugging
         System.out.println(selectedFragment);
         //
 
-        initObjectStreams(socket);
+        // Init output and input streams to the client Peer
+        initObjectStreams(requests.getLast());
+
+        //upload the random fragment to the client Peer
         initUpload(selectedFragment);
 
 
     }
 
-    private void initObjectStreams(Socket socket) throws IOException {
-        this.oos = new ObjectOutputStream(socket.getOutputStream());
-        this.ois = new ObjectInputStream(socket.getInputStream());
+    private void initObjectStreams(RequestInfo request) throws IOException {
+        this.oos = request.oos;
+        this.ois = request.ois;
     }
 
 
@@ -90,7 +91,9 @@ public class ColabDownloadHandler implements  Runnable{
             byte[] fileContent = new byte[(int) file.length()];
             try (FileInputStream fis = new FileInputStream(file)) {
                 fis.read(fileContent);  // Read file into byte array
-                oos.writeObject(new Message(MessageType.FILE_RESPONSE, fileContent));  // Send file content as a message
+                Message response = new Message(MessageType.FILE_RESPONSE, fileContent);
+                response.setContent(fileName);
+                oos.writeObject(response);  // Send file content as a message
             }
         } else {
             // File not found or not accessible
