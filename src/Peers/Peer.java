@@ -2,12 +2,14 @@ package Peers;
 
 import Tracker.PeerInfo;
 
+import java.awt.image.AreaAveragingScaleFilter;
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
+
 
 public class Peer {
     private Socket socket;
@@ -21,7 +23,7 @@ public class Peer {
 
     private int port = 1112;
 
-    private String shared_dir = "shared_Directory1";
+    private final String shared_dir = "shared_Directory1";
     public static Boolean processRunning;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
@@ -149,7 +151,7 @@ public class Peer {
      * Requests the list of all files available in the P2P network from the tracker.
      * Prints out the list or indicates if no files are available.
      */
-    public void listFiles() throws IOException, ClassNotFoundException {
+    public ArrayList<String> listFiles() throws IOException, ClassNotFoundException {
         // Send a LIST_FILES message to the tracker
         Message listRequest = new Message(MessageType.LIST_FILES);
         oos.writeObject(listRequest);
@@ -158,14 +160,14 @@ public class Peer {
         Object response = ois.readObject();
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
-            if (!responseMessage.getContent().isEmpty()) {
-                System.out.println("Available files: " + responseMessage.getContent());
-            } else {
-                System.out.println("No files available in the system.");
+            if (!responseMessage.getFiles().isEmpty()) {
+                return responseMessage.getFiles();
+                //System.out.println("Available files: " + responseMessage.getFiles());
             }
         } else {
             System.out.println("Received an invalid response from the tracker.");
         }
+        return null;
     }
 
     // Method to check if a specific peer is active by sending a token or identifier
@@ -429,6 +431,44 @@ public class Peer {
     }
 
 
+    //TODO------------------------------------
+    private void downloadFiles() throws IOException, ClassNotFoundException {
+        Random random = new Random();
+        ArrayList<String> files = listFiles();
+
+        while(!files.isEmpty()) {
+
+            // Randomly select a file
+            String selectedFile = files.get(random.nextInt(files.size() - 1));
+            // Remove the selected file after the random choice
+            files.remove(selectedFile);
+
+            ArrayList<PeerInfo> peersWithFile = requestFileDetails(selectedFile);
+
+            ArrayList<MessageType> downloadResults = new ArrayList<>();
+
+            long startTime = System.currentTimeMillis();
+
+            if (peersWithFile.size() <= 4) {
+                for (PeerInfo peer : peersWithFile) {
+
+                    // Start new Thread to Request file fragments from current peer
+                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
+
+                }
+            }
+            else {
+                //TODO implementation when peersWithFile.size() > 4
+                //TODO Randomly select 2 Random Peers and the 2 Peers that have sent the most fragments
+            }
+
+        }
+
+    }
+
+
+
+
     //-----------------Downloading-------------------------
     private void initiateDownloadFromPeer(PeerInfo bestPeer, Message responseMsg, HashMap<PeerInfo, Double> scores, ArrayList<PeerInfo> failedPeers) {
         String fileName = responseMsg.getContent();
@@ -646,6 +686,9 @@ public class Peer {
 
     public String getIp() {
         return "localhost";
+    }
+    public String getShared_dir(){
+        return shared_dir;
     }
 
 }

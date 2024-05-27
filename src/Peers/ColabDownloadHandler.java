@@ -54,7 +54,7 @@ public class ColabDownloadHandler implements  Runnable{
         Socket socket = null;
         Message msg = null;
 
-        // Retrieve the only pair from the hashmap
+        // Retrieve the only request
         msg = requests.getLast().msg;
 
 
@@ -69,7 +69,7 @@ public class ColabDownloadHandler implements  Runnable{
         }
 
         // Get a random fragment from those requested
-        String selectedFragment = fragments.get(random.nextInt(fragments.size()));
+        String selectedFragment = fragments.get(random.nextInt(fragments.size()-1));
 
         // For debugging
         System.out.println(selectedFragment);
@@ -174,7 +174,7 @@ public class ColabDownloadHandler implements  Runnable{
     private ArrayList<String> getMissingParts(String fileName) throws IOException, ClassNotFoundException {
 
 
-        ArrayList<String> totalFragments = new ArrayList<>();
+        ArrayList<String> totalFragments;
 
         totalFragments = requestFileFragments(fileName);
 

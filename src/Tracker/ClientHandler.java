@@ -251,7 +251,7 @@ class ClientHandler implements Runnable {
         }
         // Check if there are any files to send
         if (!allFiles.isEmpty()) {
-            oos.writeObject(new Message(MessageType.RESPONSE, new ArrayList<>(allFiles).toString()));
+            oos.writeObject(new Message(MessageType.RESPONSE, new ArrayList<>(allFiles)));
         } else {
             oos.writeObject(new Message(MessageType.RESPONSE, "No files available"));
         }
