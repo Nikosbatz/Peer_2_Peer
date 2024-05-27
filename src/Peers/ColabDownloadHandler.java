@@ -13,6 +13,9 @@ public class ColabDownloadHandler implements  Runnable{
     private ObjectOutputStream oos;
     private ObjectInputStream ois;
     private String shared_dir;
+    //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
+    // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
+    //and the peer from whom they were recieved
     private Map<String, HashMap<Integer, String>> filePartsReceivedFrom;
     public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir){
         this.requests = requests;
@@ -32,7 +35,11 @@ public class ColabDownloadHandler implements  Runnable{
             }
         }
         else {
-
+            try {
+                handleMultipleRequests();
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
     }
@@ -47,9 +54,10 @@ public class ColabDownloadHandler implements  Runnable{
         // Retrieve the only pair from the hashmap
         msg = requests.getLast().msg;
 
+
         // Fragments of the file that the client requests
         ArrayList<String> fragments = null;
-        String file;
+        String file = "";
 
         // Retrieve the only pair from the hashmap
         for (String key: msg.getFragments().keySet()){
@@ -69,8 +77,40 @@ public class ColabDownloadHandler implements  Runnable{
 
         //upload the random fragment to the client Peer
         initUpload(selectedFragment);
+        // Request missing parts from the peer
+        requestMissingParts(requests.get(0).peerUsername, file);
 
 
+    }
+    private void handleMultipleRequests() throws IOException, InterruptedException {
+        Random random = new Random();
+        Thread.sleep(200); // Wait for 200ms to gather multiple requests if any
+
+        double decision = random.nextDouble();
+        RequestInfo selectedRequestInfo;
+
+        if (decision <= 0.2) {
+            selectedRequestInfo = requests.get(random.nextInt(requests.size()));
+        } else if (decision <= 0.6) {
+            selectedRequestInfo = getBestRequest(requests);
+        } else {
+            selectedRequestInfo = getFrequentRequest(requests);
+        }
+
+        initObjectStreams(selectedRequestInfo);
+        String selectedFragment = selectedRequestInfo.msg.getFragments()
+                .get(selectedRequestInfo.msg.getContent())
+                .get(random.nextInt(selectedRequestInfo.msg.getFragments().get(selectedRequestInfo.msg.getContent()).size()));
+        handleDownloadRequest(selectedFragment);
+
+        for (RequestInfo requestInfo : requests) {
+            if (!requestInfo.peerUsername.equals(selectedRequestInfo.peerUsername)) {
+                sendNegativeResponse(requestInfo.oos);
+            }
+        }
+
+        // Request missing parts from the selected peer
+        requestMissingParts(selectedRequestInfo.peerUsername, selectedRequestInfo.msg.getContent());
     }
 
     private void initObjectStreams(RequestInfo request) throws IOException {
@@ -110,6 +150,7 @@ public class ColabDownloadHandler implements  Runnable{
         Message response= new Message(MessageType.ERROR,"Requested file not available.");
         oos.writeObject(response);
     }
+
     private void requestMissingParts(String peerUsername, String fileName) throws IOException {
         ArrayList<String> missingParts = getMissingParts(fileName);
         if (!missingParts.isEmpty()) {
@@ -128,7 +169,6 @@ public class ColabDownloadHandler implements  Runnable{
                 missingParts.add(fileName + ".part" + i);
             }
         }
-
         return missingParts;
     }
     private int getTotalPartsCount(String fileName) {
@@ -143,7 +183,7 @@ public class ColabDownloadHandler implements  Runnable{
                 e.printStackTrace();
             }
         }
-        return 10; //  placeholder
+        return 0; //  placeholder
     }
 
     private Message getBestRequest(ArrayList<Message> requests) {

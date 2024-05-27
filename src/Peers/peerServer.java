@@ -127,18 +127,18 @@ public class peerServer implements Runnable {
     }
 }
 
-class RequestInfo{
 
-    ObjectInputStream ois;
-    ObjectOutputStream oos;
-    Socket socket;
-    Message msg;
+class RequestInfo {
+    public Message msg;
+    public ObjectOutputStream oos;
+    public ObjectInputStream ois;
+    public String peerUsername;
 
-    public RequestInfo(Message msg, ObjectOutputStream oos, ObjectInputStream ois){
+    public RequestInfo(Message msg, ObjectOutputStream oos, ObjectInputStream ois, String peerUsername) {
         this.msg = msg;
         this.oos = oos;
         this.ois = ois;
+        this.peerUsername = peerUsername;
     }
-
-
 }
+
