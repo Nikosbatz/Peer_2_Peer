@@ -17,12 +17,14 @@ public class peerServer implements Runnable {
 
     private String shared_dir;
     private int port;
+    private Peer peer;
     ServerSocket server;
     private ArrayList<RequestInfo> requests = new ArrayList<>();
 
-    public peerServer(ServerSocket server, String shared_dir) {
+    public peerServer(ServerSocket server, String shared_dir, Peer peer) {
         this.server = server;
         this.shared_dir = shared_dir;
+        this.peer = peer;
     }
 
     public void run() {
@@ -49,7 +51,7 @@ public class peerServer implements Runnable {
                         }
 
                         // Start the thread to initiate Collaborative download.
-                        new Thread(new ColabDownloadHandler(requests, this.shared_dir)).start();
+                        new Thread(new ColabDownloadHandler(requests, this.shared_dir, this.peer)).start();
                     }
                 }
 

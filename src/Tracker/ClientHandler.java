@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -276,11 +277,22 @@ class ClientHandler implements Runnable {
             }
         }
 
+        // Find the total fragments of the file from the Initial seeder
+        HashMap<String, ArrayList<String>> totalFragments = new HashMap<>();
+        for (PeerInfo peer : peers.values()) {
+            if (peer.getFiles().contains(requestedFile)) {
+
+                totalFragments.put(requestedFile, peer.getFragments().get(requestedFile));
+
+            }
+        }
+
         if (peersWithFile.isEmpty()) {
             oos.writeObject(new Message(MessageType.ERROR, "No peers have the file"));
         } else {
             // Respond with the peers that have the file requested
             Message response = new Message(MessageType.RESPONSE, requestedFile);
+            response.setFragments(totalFragments);
             response.setPeers(peersWithFile);
             System.out.println(peersWithFile.getLast().getIsFileInitSeeder().get(requestedFile));
             oos.writeObject(response);

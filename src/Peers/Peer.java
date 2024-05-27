@@ -30,7 +30,16 @@ public class Peer {
         ois = new ObjectInputStream(socket.getInputStream());
 
     }
-    private ArrayList<String> getSharedDirectoryInfo() {
+
+    public ObjectInputStream getOis(){
+        return ois;
+    }
+    public ObjectOutputStream getOos(){
+        return  oos;
+    }
+
+
+    ArrayList<String> getSharedDirectoryInfo() {
         // Path for this peer's shared_directory
         Path currentDir = Paths.get(System.getProperty("user.dir")).resolve("src");
         String shared_dir = currentDir.resolve(this.shared_dir).toString();
@@ -188,8 +197,9 @@ public class Peer {
         // Wait for the response from the tracker or peer
         return  Long.MAX_VALUE;
     }
+
   //File details
-    public void requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
+    public ArrayList<PeerInfo> requestFileDetails(String fileName) throws IOException, ClassNotFoundException {
         Message requestDetails = new Message(MessageType.DETAILS, fileName);
         oos.writeObject(requestDetails);
 
@@ -200,11 +210,15 @@ public class Peer {
             Message responseMessage = (Message) response;
             responseMessage.setContent(fileName);
 
-            handleFileDetailsResponse(responseMessage, fileName);
+            return handleFileDetailsResponse(responseMessage, fileName);
         }
+        else {
+            return null;
+        }
+
     }
 
-    private void handleFileDetailsResponse(Message responseMessage, String fileName) throws IOException, ClassNotFoundException {
+    private ArrayList<PeerInfo> handleFileDetailsResponse(Message responseMessage, String fileName) throws IOException, ClassNotFoundException {
 
         ArrayList<PeerInfo> peersWithFile = responseMessage.getPeers();
         if (peersWithFile == null) {
@@ -252,7 +266,7 @@ public class Peer {
             }
 
         }
-
+        return peersWithFile;
     }
 
     private double calculateScore(int downloads, int failures) {
@@ -357,7 +371,7 @@ public class Peer {
     }
     private void startPeerServer() throws IOException {
         this.serverSocket = new ServerSocket(getPort());
-        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir));
+        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir, this));
         serverThread.start();
     }
     //Select functionality
@@ -551,7 +565,7 @@ public class Peer {
                     password = in.nextLine();
                     login(username, password);
                     if (this.token != null){
-                        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir));
+                        this.serverThread = new Thread(new peerServer(this.serverSocket, this.shared_dir, this));
                         serverThread.start();
                     }
 

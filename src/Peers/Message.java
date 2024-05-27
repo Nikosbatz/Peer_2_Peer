@@ -20,6 +20,7 @@ public class Message implements Serializable {
     private  String username;
     private String password;
     private ArrayList<PeerInfo> peers ;
+
     private HashMap<String, Boolean> fileDetails = new HashMap<String, Boolean>(); // To store file name and seeder status
 
 
