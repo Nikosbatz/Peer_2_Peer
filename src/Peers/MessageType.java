@@ -20,9 +20,8 @@ public enum MessageType {
     FILE_RESPONSE("File Response"), // Response message containing the file data
     NOTIFY("Notify"),          // Notify the tracker about changes in file availability
     ACTIVE_RESPONSE("Active Response"), // Response to CHECK_ACTIVE request
-
-    EXIT("Exit");              // Indicate that a peer or tracker is exiting the session
-
+    EXIT("Exit"),  // Indicate that a peer or tracker is exiting the session
+    PEER_INFO("Get Peer Info");
     private final String actionDescription;
 
     // Constructor for the enum to set the action descriptions

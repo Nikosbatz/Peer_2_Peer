@@ -17,16 +17,16 @@ public class Message implements Serializable {
     private HashMap<String, ArrayList<String>> fragments;
     private String ip;
     private int port;
-    private  String username;
+    private String username;
     private String password;
-    private ArrayList<PeerInfo> peers ;
+    private ArrayList<PeerInfo> peers;
 
-    private HashMap<String, Boolean> fileDetails = new HashMap<String, Boolean>(); // To store file name and seeder status
-
-
+    private HashMap<String, Boolean> fileDetails = new HashMap<>(); // To store file name and seeder status
+    private byte[] fileContent;  // Attribute to hold the file data
+    private HashMap<String, String> peerInfoDetails;  // Attribute to hold peer info details
 
     // Constructor for messages that include peer ID and file list
-    public Message(MessageType type,  ArrayList<String> files) {
+    public Message(MessageType type, ArrayList<String> files) {
         this.type = type;
         this.files = files;
     }
@@ -37,9 +37,6 @@ public class Message implements Serializable {
         this.content = content;
     }
 
-    // byte[] fileContent attribute to hold the file data
-    private byte[] fileContent;
-
     // Constructor for messages that include file content
     public Message(MessageType type, byte[] fileContent) {
         this.type = type;
@@ -49,6 +46,13 @@ public class Message implements Serializable {
     // Constructor for messages with only a type (e.g., request list of files)
     public Message(MessageType type) {
         this.type = type;
+    }
+
+    // Constructor for messages that include peer info details
+    public Message(MessageType type, PeerInfo peerInfo) {
+        this.type = type;
+        this.peers = new ArrayList<>();
+        this.peers.add(peerInfo);
     }
 
     // Getters and setters omitted for brevity
@@ -63,7 +67,6 @@ public class Message implements Serializable {
     public Map<String, Boolean> getFileDetails() {
         return fileDetails;
     }
-
 
     public void addFileDetail(String fileName, boolean isSeeder) {
         this.fileDetails.put(fileName, isSeeder);
@@ -84,17 +87,19 @@ public class Message implements Serializable {
     public void setFiles(ArrayList<String> files) {
         this.files = files;
     }
-    public ArrayList<String> getFiles(){return this.files;}
+
+    public ArrayList<String> getFiles() {
+        return this.files;
+    }
 
     public void setContent(String content) {
         this.content = content;
     }
-    // Getter for the file content
+
     public byte[] getFileContent() {
         return fileContent;
     }
 
-    // Setter for the file content
     public void setFileContent(byte[] fileContent) {
         this.fileContent = fileContent;
     }
@@ -145,5 +150,13 @@ public class Message implements Serializable {
 
     public void setFragments(HashMap<String, ArrayList<String>> fragments) {
         this.fragments = fragments;
+    }
+
+    public HashMap<String, String> getPeerInfoDetails() {
+        return peerInfoDetails;
+    }
+
+    public void setPeerInfoDetails(HashMap<String, String> peerInfoDetails) {
+        this.peerInfoDetails = peerInfoDetails;
     }
 }

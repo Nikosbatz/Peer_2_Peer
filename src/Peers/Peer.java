@@ -23,7 +23,7 @@ public class Peer {
 
     private int port = 1112;
 
-    private final String shared_dir = "shared_Directory1";
+    private final String shared_dir = "shared_Directory3";
     public static Boolean processRunning;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
@@ -429,10 +429,17 @@ public class Peer {
             return new ArrayList<>();
         }
     }
+    private HashMap<String, String> getPeerInfoFromRequest(RequestInfo requestInfo) throws IOException, ClassNotFoundException {
+        Message peerInfoRequest = new Message(MessageType.PEER_INFO, requestInfo.peerUsername);
+        oos.writeObject(peerInfoRequest);
+
+        Message response = (Message) ois.readObject();
+        return response.getPeerInfoDetails(); // Ensure this returns the necessary peer info details as a HashMap
+    }
 
 
     //TODO------------------------------------
-    private void downloadFiles() throws IOException, ClassNotFoundException {
+    private void downloadFiles() throws IOException, ClassNotFoundException, InterruptedException {
         Random random = new Random();
         ArrayList<String> files = listFiles();
 
@@ -458,15 +465,51 @@ public class Peer {
                 }
             }
             else {
-                //TODO implementation when peersWithFile.size() > 4
-                //TODO Randomly select 2 Random Peers and the 2 Peers that have sent the most fragments
+                HashMap<PeerInfo, Integer> peerFragmentCount = new HashMap<>();
+                for (PeerInfo peer : peersWithFile) {
+                    int fragmentCount = getFragmentCount(peer, selectedFile);
+                    peerFragmentCount.put(peer, fragmentCount);
+                }
+
+                ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4);
+                for (PeerInfo peer : selectedPeers) {
+                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
+                }
             }
 
+            // Wait for some time before sending the next set of requests
+            Thread.sleep(500);
         }
 
     }
 
 
+    private int getFragmentCount(PeerInfo peer, String fileName) {
+        if (peer.getFragments().containsKey(fileName)) {
+            return peer.getFragments().get(fileName).size();
+        }
+        return 0;
+    }
+    private ArrayList<PeerInfo> selectPeers(HashMap<PeerInfo, Integer> peerFragmentCount, int count) {
+        ArrayList<PeerInfo> selectedPeers = new ArrayList<>();
+        ArrayList<PeerInfo> peers = new ArrayList<>(peerFragmentCount.keySet());
+
+        // Select 2 peers with the most fragments
+        peers.sort((p1, p2) -> peerFragmentCount.get(p2) - peerFragmentCount.get(p1));
+
+        for (int i = 0; i < 2 && i < peers.size(); i++) {
+            selectedPeers.add(peers.get(i));
+        }
+
+        // Select 2 random peers
+        peers.removeAll(selectedPeers);
+        Random random = new Random();
+        for (int i = 0; i < 2 && !peers.isEmpty(); i++) {
+            selectedPeers.add(peers.remove(random.nextInt(peers.size())));
+        }
+
+        return selectedPeers;
+    }
 
 
     //-----------------Downloading-------------------------

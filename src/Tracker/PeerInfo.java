@@ -27,6 +27,8 @@ public class PeerInfo implements Serializable {
         this.fragments = new HashMap<>();
         this.isFileInitSeeder = new HashMap<>();
     }
+    public PeerInfo() {}
+
 
     // Getters
     public ArrayList<String> getFiles() {

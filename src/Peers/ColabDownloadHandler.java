@@ -4,7 +4,6 @@ import Tracker.PeerInfo;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -86,9 +85,9 @@ public class ColabDownloadHandler implements  Runnable{
 
 
     }
-    /*private void handleMultipleRequests() throws IOException, InterruptedException {
+    private void handleMultipleRequests() throws IOException, InterruptedException, ClassNotFoundException {
         Random random = new Random();
-        Thread.sleep(200); // Wait for 200ms to gather multiple requests if any
+        Thread.sleep(200);
 
         double decision = random.nextDouble();
         RequestInfo selectedRequestInfo;
@@ -102,20 +101,51 @@ public class ColabDownloadHandler implements  Runnable{
         }
 
         initObjectStreams(selectedRequestInfo);
+
         String selectedFragment = selectedRequestInfo.msg.getFragments()
                 .get(selectedRequestInfo.msg.getContent())
                 .get(random.nextInt(selectedRequestInfo.msg.getFragments().get(selectedRequestInfo.msg.getContent()).size()));
-        handleDownloadRequest(selectedFragment);
+
+        initUpload(selectedFragment);
 
         for (RequestInfo requestInfo : requests) {
             if (!requestInfo.peerUsername.equals(selectedRequestInfo.peerUsername)) {
-                sendNegativeResponse(requestInfo.oos);
+                sendNegativeResponse();
             }
         }
 
-        // Request missing parts from the selected peer
-        requestMissingParts(selectedRequestInfo.peerUsername, selectedRequestInfo.msg.getContent());
-    }*/
+        requestMissingParts(selectedRequestInfo.msg.getContent());
+    }
+
+    //calculates the best request based on the peer's response time and a combined score of downloads and failures.
+
+    /// Calculates the best request based on the peer's response time and a combined score of downloads and failures.
+    private RequestInfo getBestRequest(ArrayList<RequestInfo> requests) throws IOException, ClassNotFoundException {
+        RequestInfo bestRequest = null;
+        double bestScore = Double.MAX_VALUE;
+
+        for (RequestInfo requestInfo : requests) {
+            PeerInfo peerInfo = getPeerInfoFromRequest(requestInfo);
+            long responseTime = peer.checkActive(peerInfo);
+            double score = responseTime * Math.pow(0.75, peerInfo.getCountDownloads()) * Math.pow(1.25, peerInfo.getCountFailures());
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestRequest = requestInfo;
+            }
+        }
+
+        return bestRequest;
+    }
+
+    // Sends a request to get the PeerInfo for a given peer based on their username.
+    private PeerInfo getPeerInfoFromRequest(RequestInfo requestInfo) throws IOException, ClassNotFoundException {
+        Message peerInfoRequest = new Message(MessageType.PEER_INFO, requestInfo.peerUsername);
+        peer.getOos().writeObject(peerInfoRequest);
+
+        Message response = (Message) peer.getOis().readObject();
+        return response.getPeers().get(0); // Ensure this returns the necessary peer info details
+    }
 
     private void initObjectStreams(RequestInfo request) throws IOException {
         this.oos = request.oos;
@@ -146,10 +176,6 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
 
-
-
-
-    // ------- ANESTIS ---------------
     private void sendNegativeResponse() throws IOException {
         Message response= new Message(MessageType.ERROR,"Requested file not available.");
         oos.writeObject(response);
@@ -167,7 +193,7 @@ public class ColabDownloadHandler implements  Runnable{
             oos.writeObject(request);
         }
         else {
-            System.out.println("THERE NO MISSING FRAGMENTS");
+            System.out.println("THERE ARE NO MISSING FRAGMENTS");
         }
 
     }
@@ -205,23 +231,19 @@ public class ColabDownloadHandler implements  Runnable{
 
     }
 
-    private Message getBestRequest(ArrayList<Message> requests) {
-        //  the request with the highest priority or from the peer with the best performance
-        return requests.get(0); // Placeholder return
-    }
-
-    private Message getFrequentRequest(ArrayList<Message> requests) {
+    private RequestInfo getFrequentRequest(ArrayList<RequestInfo> requests) {
         HashMap<String, Integer> peerRequestCount = new HashMap<>();
-        for (Message request : requests) {
-            peerRequestCount.put(request.getUsername(), peerRequestCount.getOrDefault(request.getUsername(), 0) + 1);
+        for (RequestInfo request : requests) {
+            peerRequestCount.put(request.peerUsername, peerRequestCount.getOrDefault(request.peerUsername, 0) + 1);
         }
 
         String frequentPeer = Collections.max(peerRequestCount.entrySet(), Map.Entry.comparingByValue()).getKey();
-        for (Message request : requests) {
-            if (request.getUsername().equals(frequentPeer)) {
+        for (RequestInfo request : requests) {
+            if (request.peerUsername.equals(frequentPeer)) {
                 return request;
             }
         }
         return requests.get(0); // Fallback to the first request
     }
+
 }

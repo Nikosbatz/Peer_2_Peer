@@ -80,14 +80,32 @@ class ClientHandler implements Runnable {
             case NOTIFY_SUCCESS:
                 handleNotification(msg, oos);
                 break;
-
+            case PEER_INFO:
+                getPeerInfoByUsername(msg,oos);
+                break;
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
         }
     }
 
 
-
+    private void getPeerInfoByUsername(Message msg, ObjectOutputStream oos) throws IOException {
+        String username = msg.getContent();
+        PeerInfo peerInfo = PeerInfoByUsername(username);
+        if (peerInfo != null) {
+            oos.writeObject(new Message(MessageType.RESPONSE, peerInfo));
+        } else {
+            oos.writeObject(new Message(MessageType.ERROR, "Peer not found"));
+        }
+    }
+    public PeerInfo PeerInfoByUsername(String username) {
+        for(PeerInfo peer : connectedPeers.values()) {
+            if (peer.getUsername().equals(username)) {
+                return peer;
+            }
+        }
+        return null;
+    }
     private void registerPeer(Message msg, ObjectOutputStream oos) throws IOException {
 
         // handle registration form data
