@@ -26,7 +26,6 @@ public class DownloadRequestHandler implements Runnable{
         this.downloadResults = downloadResults;
     }
 
-
     @Override
     public void run() {
 

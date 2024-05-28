@@ -25,6 +25,10 @@ public class Peer {
 
     private final String shared_dir = "shared_Directory3";
     public static Boolean processRunning;
+    //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
+    // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
+    //and the peer from whom they were recieved
+    public HashMap<String, HashMap<Integer, String>> filePartsReceivedFrom;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
@@ -38,6 +42,13 @@ public class Peer {
     }
     public ObjectOutputStream getOos(){
         return  oos;
+    }
+    //Method to upadte the filePartsRecievedFrom
+    public void updateFilePartsReceivedFrom(String fileName,int partNumber,String peerUsername){
+        //Ensure the file entry exists
+        filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
+        // Update the part number with the username of the peer from whom it was received
+        filePartsReceivedFrom.get(fileName).put(partNumber, peerUsername);
     }
 
 
@@ -471,13 +482,14 @@ public class Peer {
                     peerFragmentCount.put(peer, fragmentCount);
                 }
 
-                ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4);
+                ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4,selectedFile);
                 for (PeerInfo peer : selectedPeers) {
                     new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
                 }
             }
 
             // Wait for some time before sending the next set of requests
+
             Thread.sleep(500);
         }
 
@@ -490,7 +502,7 @@ public class Peer {
         }
         return 0;
     }
-    private ArrayList<PeerInfo> selectPeers(HashMap<PeerInfo, Integer> peerFragmentCount, int count) {
+    private ArrayList<PeerInfo> selectPeers(HashMap<PeerInfo, Integer> peerFragmentCount, int count, String selectedfile) {
         ArrayList<PeerInfo> selectedPeers = new ArrayList<>();
         ArrayList<PeerInfo> peers = new ArrayList<>(peerFragmentCount.keySet());
 
@@ -498,7 +510,9 @@ public class Peer {
         peers.sort((p1, p2) -> peerFragmentCount.get(p2) - peerFragmentCount.get(p1));
 
         for (int i = 0; i < 2 && i < peers.size(); i++) {
-            selectedPeers.add(peers.get(i));
+            if(!peers.get(i).getIsFileInitSeeder().get(selectedfile)) {
+                selectedPeers.add(peers.get(i));
+            }
         }
 
         // Select 2 random peers

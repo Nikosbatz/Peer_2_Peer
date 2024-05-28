@@ -10,19 +10,17 @@ import java.util.*;
 
 public class ColabDownloadHandler implements  Runnable{
 
+    private final HashMap<String, HashMap<Integer, String>> filePartsReceivedFrom;
     private ArrayList<RequestInfo> requests;
     private ObjectOutputStream oos;
     private Peer peer;
     private ObjectInputStream ois;
     private String shared_dir;
-    //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
-    // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
-    //and the peer from whom they were recieved
-    private Map<String, HashMap<Integer, String>> filePartsReceivedFrom;
+   
     public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir, Peer peer){
         this.requests = requests;
         this.shared_dir = shared_dir;
-        this.filePartsReceivedFrom = filePartsReceivedFrom;
+        this.filePartsReceivedFrom = peer.filePartsReceivedFrom;
         this.peer = peer;
     }
 
@@ -36,13 +34,13 @@ public class ColabDownloadHandler implements  Runnable{
                 throw new RuntimeException(e);
             }
         }
-        /*else {
+        else {
             try {
                 handleMultipleRequests();
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException | InterruptedException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
-        }*/
+        }
 
     }
 
@@ -82,6 +80,7 @@ public class ColabDownloadHandler implements  Runnable{
 
         // Request missing parts from the peer
         requestMissingParts(file);
+       //TODO filesrecievedfrom update it
 
 
     }
@@ -107,6 +106,8 @@ public class ColabDownloadHandler implements  Runnable{
                 .get(random.nextInt(selectedRequestInfo.msg.getFragments().get(selectedRequestInfo.msg.getContent()).size()));
 
         initUpload(selectedFragment);
+        // Update filePartsReceivedFrom
+        updateFilePartsReceivedFrom(selectedRequestInfo.msg.getContent(), selectedFragment, selectedRequestInfo.peerUsername);
 
         for (RequestInfo requestInfo : requests) {
             if (!requestInfo.peerUsername.equals(selectedRequestInfo.peerUsername)) {
@@ -118,7 +119,6 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
     //calculates the best request based on the peer's response time and a combined score of downloads and failures.
-
     /// Calculates the best request based on the peer's response time and a combined score of downloads and failures.
     private RequestInfo getBestRequest(ArrayList<RequestInfo> requests) throws IOException, ClassNotFoundException {
         RequestInfo bestRequest = null;
@@ -232,18 +232,36 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
     private RequestInfo getFrequentRequest(ArrayList<RequestInfo> requests) {
-        HashMap<String, Integer> peerRequestCount = new HashMap<>();
         for (RequestInfo request : requests) {
-            peerRequestCount.put(request.peerUsername, peerRequestCount.getOrDefault(request.peerUsername, 0) + 1);
+            String fileName = request.msg.getContent();
+            int partNumber = Integer.parseInt(request.msg.getFragments().get(fileName).get(0).split("_")[1]); //  the fragment name format is 'fileName_partNumber'
+            String peerUsername = request.peerUsername;
+
+            filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
+            filePartsReceivedFrom.get(fileName).put(partNumber, peerUsername);
         }
 
-        String frequentPeer = Collections.max(peerRequestCount.entrySet(), Map.Entry.comparingByValue()).getKey();
+        HashMap<String, Integer> requestCount = new HashMap<>();
+        for (HashMap<Integer, String> parts : peer.filePartsReceivedFrom.values()) {
+            for (String peerUsername : parts.values()) {
+                requestCount.put(peerUsername, requestCount.getOrDefault(peerUsername, 0) + 1);
+            }
+        }
+
+        String frequentPeer = Collections.max(requestCount.entrySet(), Map.Entry.comparingByValue()).getKey();
         for (RequestInfo request : requests) {
             if (request.peerUsername.equals(frequentPeer)) {
                 return request;
             }
         }
-        return requests.get(0); // Fallback to the first request
+
+        return requests.get(0); // Fallback to the first request if no frequent peer is found
+    }
+
+    private void updateFilePartsReceivedFrom(String fileName, String fragment, String peerUsername) {
+        int fragmentNumber = Integer.parseInt(fragment.split("_")[1]); // the fragment name format is 'fileName_partNumber'
+        filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
+        filePartsReceivedFrom.get(fileName).put(fragmentNumber, peerUsername);
     }
 
 }

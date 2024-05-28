@@ -20,7 +20,7 @@ public class Message implements Serializable {
     private String username;
     private String password;
     private ArrayList<PeerInfo> peers;
-
+    private PeerInfo peer;
     private HashMap<String, Boolean> fileDetails = new HashMap<>(); // To store file name and seeder status
     private byte[] fileContent;  // Attribute to hold the file data
     private HashMap<String, String> peerInfoDetails;  // Attribute to hold peer info details
@@ -158,5 +158,13 @@ public class Message implements Serializable {
 
     public void setPeerInfoDetails(HashMap<String, String> peerInfoDetails) {
         this.peerInfoDetails = peerInfoDetails;
+    }
+
+    public PeerInfo getPeer() {
+        return peer;
+    }
+
+    public void setPeer(PeerInfo peer) {
+        this.peer = peer;
     }
 }

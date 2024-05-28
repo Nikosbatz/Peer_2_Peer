@@ -45,6 +45,7 @@ public class ClientHandler implements Runnable {
 
                         //handleDownloadRequest(((Message) msg).getContent(), oos);
                         break;
+
                     default:
                         System.out.println("Received an unrecognized message type.");
                         break;
