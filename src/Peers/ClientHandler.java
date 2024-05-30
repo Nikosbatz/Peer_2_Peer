@@ -38,6 +38,7 @@ public class ClientHandler implements Runnable {
 
                     case DOWNLOAD_REQUEST:
                         synchronized (requests) {
+
                             //TODO check if this username is correct being here
                             requests.add(new RequestInfo((Message) msg, oos, is, ((Message) msg).getUsername()));
                             requests.notify();

@@ -66,7 +66,7 @@ public class ColabDownloadHandler implements  Runnable{
         }
 
         // Get a random fragment from those requested
-        String selectedFragment = fragments.get(random.nextInt(fragments.size()-1));
+        String selectedFragment = fragments.get(random.nextInt(fragments.size())-1);
 
         // For debugging
         System.out.println(selectedFragment);

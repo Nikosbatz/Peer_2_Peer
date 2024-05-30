@@ -16,13 +16,13 @@ public class DownloadRequestHandler implements Runnable{
 
     private PeerInfo peer;
     private String fileName;
-    private Peer thisPeer;
+    private Peer self;
     private ArrayList<MessageType> downloadResults;
 
-    public DownloadRequestHandler(PeerInfo peer, String fileName, Peer thisPeer, ArrayList<MessageType> downloadResults){
+    public DownloadRequestHandler(PeerInfo peer, String fileName, Peer self, ArrayList<MessageType> downloadResults){
         this.peer = peer;
         this.fileName = fileName;
-        this.thisPeer = thisPeer;
+        this.self = self;
         this.downloadResults = downloadResults;
     }
 
@@ -30,17 +30,19 @@ public class DownloadRequestHandler implements Runnable{
     public void run() {
 
         try {
+            // Open streams to the receiver Peer of the download Request
             Socket socket = new Socket(this.peer.getIp(), this.peer.getPort());
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
 
-
+            System.out.println("----------DOWNLOAD REQUEST HANDLER----------");
 
             // ------------- Finding missing fragments of the file -------------
-            // Request the details of this file
+            // Request the details of this file from the Tracker
             // TO GET THE FRAGMENTS THAT ASSEMBLE IT
             Message requestDetails = new Message(MessageType.DETAILS, fileName);
-            oos.writeObject(requestDetails);
+            // Send the request to the tracker
+            self.getOos().writeObject(requestDetails);
 
             // Get the response of the file details
             Message response =(Message) ois.readObject();
@@ -48,7 +50,7 @@ public class DownloadRequestHandler implements Runnable{
             // Get the total fragments of this file
             ArrayList<String> totalFragments = response.getFragments().get(fileName);
             // Local shared_dir files
-            ArrayList<String> localFiles = this.thisPeer.getSharedDirectoryInfo();
+            ArrayList<String> localFiles = this.self.getSharedDirectoryInfo();
             // To store the names of the missing fragments
             ArrayList<String> missingFragments = new ArrayList<>();
             // Find the missing fragments
@@ -72,9 +74,11 @@ public class DownloadRequestHandler implements Runnable{
 
 
             Message reply = (Message) ois.readObject();
+            System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
 
             if (reply.getType() == MessageType.FILE_RESPONSE){
-                Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+thisPeer.getShared_dir());
+                System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
+                Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+ self.getShared_dir());
                 Files.createDirectories(downloadPath);
                 // fileResponse.getContent contains the name of the file that the seeder sent
                 downloadPath = downloadPath.resolve(reply.getContent());
@@ -84,6 +88,7 @@ public class DownloadRequestHandler implements Runnable{
 
             }
             else if(reply.getType() == MessageType.NOTIFY_FAIL){
+                System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
                 downloadResults.add(MessageType.NOTIFY_FAIL);
 
             }

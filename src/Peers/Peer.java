@@ -21,13 +21,13 @@ public class Peer {
 
     private Boolean isFirstLogin = true;
 
-    private int port = 1112;
+    private int port = 1113;
 
-    private final String shared_dir = "shared_Directory3";
+    private final String shared_dir = "shared_Directory2";
     public static Boolean processRunning;
     //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
     // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
-    //and the peer from whom they were recieved
+    //and the peer from whom they were received
     public HashMap<String, HashMap<Integer, String>> filePartsReceivedFrom;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
@@ -266,7 +266,7 @@ public class Peer {
                         "\nFragments: " + peer.getFragments().get(fileName).toString() + "\nSeeder-bit: " + peer.getIsFileInitSeeder().get(fileName));
             }
 
-            Scanner in = new Scanner(System.in);
+           /* Scanner in = new Scanner(System.in);
             System.out.println("Best peer details:\nUsername: " + bestPeer.getUsername() + "\nIP: " + bestPeer.getIp() + "\nPort: " + bestPeer.getPort());
             System.out.println("Do you want to download the file? y/n");
             String response = in.nextLine();
@@ -276,7 +276,7 @@ public class Peer {
             if (response.equals("y") ) {
                 ArrayList<PeerInfo> failedPeers = new ArrayList<>();
                 initiateDownloadFromPeer(bestPeer, responseMessage, peerScores, failedPeers);
-            }
+            }*/
 
         }
         return peersWithFile;
@@ -453,15 +453,20 @@ public class Peer {
     private void downloadFiles() throws IOException, ClassNotFoundException, InterruptedException {
         Random random = new Random();
         ArrayList<String> files = listFiles();
+        System.out.println("Files size: " + files.size());
 
         while(!files.isEmpty()) {
 
             // Randomly select a file
-            String selectedFile = files.get(random.nextInt(files.size() - 1));
+
+            String selectedFile = files.get(random.nextInt(files.size()));
+            System.out.println(selectedFile);
             // Remove the selected file after the random choice
             files.remove(selectedFile);
 
             ArrayList<PeerInfo> peersWithFile = requestFileDetails(selectedFile);
+
+            System.out.println("---------------ASDASD----");
 
             ArrayList<MessageType> downloadResults = new ArrayList<>();
 
@@ -469,6 +474,8 @@ public class Peer {
 
             if (peersWithFile.size() <= 4) {
                 for (PeerInfo peer : peersWithFile) {
+
+                    System.out.println("---------------ASDASD----");
 
                     // Start new Thread to Request file fragments from current peer
                     new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
@@ -489,8 +496,6 @@ public class Peer {
             }
 
             // Wait for some time before sending the next set of requests
-
-            Thread.sleep(500);
         }
 
     }
@@ -638,7 +643,7 @@ public class Peer {
 
 
 
-    public void showMenu () throws IOException, ClassNotFoundException {
+    public void showMenu () throws IOException, ClassNotFoundException, InterruptedException {
         Scanner in = new Scanner(System.in);
 
         // If peer in not connected show the login/register forms
@@ -675,7 +680,7 @@ public class Peer {
         // If peer is connected show the operations menu
         else {
             //TODO make the operations menu
-            System.out.print("Choose an option:\n1.Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n5.Exit \nEnter your choice: ");
+            System.out.print("Choose an option:\n1.Logout\n2.List available files \n3.Give details about a file \n4.Download a file\n5.Download all files\n6.Exit \nEnter your choice: ");
             String choice = in.nextLine();
             switch (choice) {
                 case "1":
@@ -702,7 +707,12 @@ public class Peer {
                     String download_file = in.nextLine();
                     requestFileDetails(download_file);
                     break;
+
                 case "5":
+                    System.out.println("Download all files of P2P");
+                    downloadFiles();
+                    break;
+                case "6":
                     System.out.println("exiting...");
                     break;
             }
@@ -728,7 +738,7 @@ public class Peer {
             }
 
 
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -747,5 +757,7 @@ public class Peer {
     public String getShared_dir(){
         return shared_dir;
     }
+
+
 
 }
