@@ -21,7 +21,8 @@ public enum MessageType {
     NOTIFY("Notify"),          // Notify the tracker about changes in file availability
     ACTIVE_RESPONSE("Active Response"), // Response to CHECK_ACTIVE request
     EXIT("Exit"),  // Indicate that a peer or tracker is exiting the session
-    PEER_INFO("Get Peer Info");
+    PEER_INFO("Get Peer Info"),
+    TOTAL_FRAGMENTS("Request the total fragments count from the Tracker");
     private final String actionDescription;
 
     // Constructor for the enum to set the action descriptions

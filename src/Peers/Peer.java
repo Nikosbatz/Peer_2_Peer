@@ -457,50 +457,101 @@ public class Peer {
 
         while(!files.isEmpty()) {
 
-            // Randomly select a file
+            System.out.println("-------------------");
 
+            // Randomly select a file
             String selectedFile = files.get(random.nextInt(files.size()));
+
+            // Request The total fragments number of this file from the Tracker
+            Message msg = new Message(MessageType.TOTAL_FRAGMENTS, selectedFile);
+            oos.writeObject(msg);
+
+
+            // Wait for the reply
+            Message response = (Message) ois.readObject();
+
+            int totalFileFragments = response.getTotalFileFragments();
+
+            ArrayList<String> localFiles = getSharedDirectoryInfo();
+
+            // if Peer already has this file
+            // continue to download another file
+            if (localFiles.contains(selectedFile)){
+                files.remove(selectedFile);
+                continue;
+            }
+
             System.out.println(selectedFile);
             // Remove the selected file after the random choice
             files.remove(selectedFile);
 
-            Message requestDetails = new Message(MessageType.DETAILS, selectedFile);
+
             // Send the request to the tracker
+            Message requestDetails = new Message(MessageType.DETAILS, selectedFile);
             oos.writeObject(requestDetails);
 
             // Get the response of the file details
-            Message response =(Message) ois.readObject();
+            response = (Message) ois.readObject();
 
-            ArrayList<MessageType> downloadResults = new ArrayList<>();
+
+            System.out.println(response.getPeers() + "," + response.getFragments() + "," + response.getType());
             ArrayList<PeerInfo> peersWithFile = response.getPeers();
+            ArrayList<String> fileFragments = response.getFragments().get(selectedFile);
+            ArrayList<MessageType> downloadResults = new ArrayList<>();
 
-            long startTime = System.currentTimeMillis();
 
-            if (peersWithFile.size() <= 4) {
-                for (PeerInfo peer : peersWithFile) {
 
-                    System.out.println("---------------ASDASD----");
 
-                    // Start new Thread to Request file fragments from current peer
-                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
+            ArrayList<String> missingFragments = getMissingFragments(fileFragments);
 
+            while (!missingFragments.isEmpty()) {
+                System.out.println("Missing fragments: " + missingFragments.size());
+
+                //TODO implement requests TIMER
+                long startTime = System.currentTimeMillis();
+
+                if (peersWithFile.size() <= 4) {
+                    for (PeerInfo peer : peersWithFile) {
+
+                        // Start new Thread to Request file fragments from current peer
+                        new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
+
+                    }
+                } else {
+                    HashMap<PeerInfo, Integer> peerFragmentCount = new HashMap<>();
+                    for (PeerInfo peer : peersWithFile) {
+                        int fragmentCount = getFragmentCount(peer, selectedFile);
+                        peerFragmentCount.put(peer, fragmentCount);
+                    }
+
+                    ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4, selectedFile);
+                    for (PeerInfo peer : selectedPeers) {
+                        new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
+                    }
                 }
-            }
-            else {
-                HashMap<PeerInfo, Integer> peerFragmentCount = new HashMap<>();
-                for (PeerInfo peer : peersWithFile) {
-                    int fragmentCount = getFragmentCount(peer, selectedFile);
-                    peerFragmentCount.put(peer, fragmentCount);
-                }
 
-                ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4,selectedFile);
-                for (PeerInfo peer : selectedPeers) {
-                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
-                }
+                // Timer
+                while(System.currentTimeMillis() - startTime < 1000){}
+
+                missingFragments = getMissingFragments(fileFragments);
             }
 
             // Wait for some time before sending the next set of requests
         }
+
+    }
+
+    private ArrayList<String> getMissingFragments (ArrayList<String> fileFragments) throws IOException, ClassNotFoundException {
+
+        ArrayList<String> localFiles = getSharedDirectoryInfo();
+        ArrayList<String> missingFragments = new ArrayList<>();
+
+        for (String fragment: fileFragments){
+            if (!localFiles.contains(fragment)){
+                missingFragments.add(fragment);
+            }
+        }
+        return missingFragments;
 
     }
 

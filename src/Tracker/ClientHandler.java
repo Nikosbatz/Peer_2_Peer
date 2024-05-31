@@ -83,6 +83,9 @@ class ClientHandler implements Runnable {
             case PEER_INFO:
                 getPeerInfoByUsername(msg,oos);
                 break;
+            case TOTAL_FRAGMENTS:
+                totalFileFragments(msg, oos);
+                break;
             default:
                 oos.writeObject(new Message(MessageType.ERROR, "Unknown command"));
         }
@@ -298,10 +301,9 @@ class ClientHandler implements Runnable {
         // Find the total fragments of the file from the Initial seeder
         HashMap<String, ArrayList<String>> totalFragments = new HashMap<>();
         for (PeerInfo peer : peers.values()) {
-            if (peer.getFiles().contains(requestedFile)) {
-
+            if (peer.getFiles().contains(requestedFile) && peer.getIsFileInitSeeder().containsKey(requestedFile)) {
+                System.out.println("----------------------");
                 totalFragments.put(requestedFile, peer.getFragments().get(requestedFile));
-
             }
         }
 
@@ -311,6 +313,7 @@ class ClientHandler implements Runnable {
             // Respond with the peers that have the file requested
             Message response = new Message(MessageType.RESPONSE, requestedFile);
             response.setFragments(totalFragments);
+            System.out.println(totalFragments.get(requestedFile).size());
             response.setPeers(peersWithFile);
             System.out.println(peersWithFile.getLast().getIsFileInitSeeder().get(requestedFile));
             oos.writeObject(response);
@@ -361,6 +364,27 @@ class ClientHandler implements Runnable {
             peers.get(msg.getUsername()).incCountfailures();
         }
     }
+
+    public void totalFileFragments(Message msg, ObjectOutputStream oos) throws IOException {
+        // Requested file's name
+        String fileName = msg.getContent();
+
+        int totalFragments = 0;
+        for (String username: peers.keySet()){
+
+            PeerInfo currentPeer = peers.get(username);
+            if (currentPeer.getIsFileInitSeeder().containsKey(fileName)){
+                totalFragments = currentPeer.getFragments().get(fileName).size();
+                break;
+            }
+        }
+        Message response = new Message(MessageType.TOTAL_FRAGMENTS, fileName);
+        response.setTotalFileFragments(totalFragments);
+        oos.writeObject(response);
+        oos.flush();
+    }
+
+
 
     /*
     public void completeDownload(boolean success, String fileName) {

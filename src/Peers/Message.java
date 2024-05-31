@@ -15,6 +15,7 @@ public class Message implements Serializable {
     private ArrayList<String> files;  // List of files for file operations
     private String content;    // General content of the message
     private HashMap<String, ArrayList<String>> fragments;
+    private int totalFileFragments;
     private String ip;
     private int port;
     private String username;
@@ -166,5 +167,13 @@ public class Message implements Serializable {
 
     public void setPeer(PeerInfo peer) {
         this.peer = peer;
+    }
+
+    public int getTotalFileFragments() {
+        return totalFileFragments;
+    }
+
+    public void setTotalFileFragments(int totalFileFragments) {
+        this.totalFileFragments = totalFileFragments;
     }
 }
