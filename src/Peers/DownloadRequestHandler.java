@@ -18,12 +18,14 @@ public class DownloadRequestHandler implements Runnable{
     private String fileName;
     private Peer self;
     private ArrayList<MessageType> downloadResults;
+    private Message fileDetails;
 
-    public DownloadRequestHandler(PeerInfo peer, String fileName, Peer self, ArrayList<MessageType> downloadResults){
+    public DownloadRequestHandler(PeerInfo peer, String fileName, Peer self, ArrayList<MessageType> downloadResults, Message fileDetails){
         this.peer = peer;
         this.fileName = fileName;
         this.self = self;
         this.downloadResults = downloadResults;
+        this.fileDetails = fileDetails;
     }
 
     @Override
@@ -35,20 +37,11 @@ public class DownloadRequestHandler implements Runnable{
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
 
-            System.out.println("----------DOWNLOAD REQUEST HANDLER----------");
-
             // ------------- Finding missing fragments of the file -------------
-            // Request the details of this file from the Tracker
-            // TO GET THE FRAGMENTS THAT ASSEMBLE IT
-            Message requestDetails = new Message(MessageType.DETAILS, fileName);
-            // Send the request to the tracker
-            self.getOos().writeObject(requestDetails);
 
-            // Get the response of the file details
-            Message response =(Message) ois.readObject();
 
             // Get the total fragments of this file
-            ArrayList<String> totalFragments = response.getFragments().get(fileName);
+            ArrayList<String> totalFragments = fileDetails.getFragments().get(fileName);
             // Local shared_dir files
             ArrayList<String> localFiles = this.self.getSharedDirectoryInfo();
             // To store the names of the missing fragments
@@ -71,13 +64,12 @@ public class DownloadRequestHandler implements Runnable{
 
             // Send Download request to Peer
             oos.writeObject(msg);
-
+            System.out.println("----------DOWNLOAD REQUEST HANDLER (Request)----------");
 
             Message reply = (Message) ois.readObject();
             System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
 
             if (reply.getType() == MessageType.FILE_RESPONSE){
-                System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
                 Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+ self.getShared_dir());
                 Files.createDirectories(downloadPath);
                 // fileResponse.getContent contains the name of the file that the seeder sent
@@ -88,7 +80,7 @@ public class DownloadRequestHandler implements Runnable{
 
             }
             else if(reply.getType() == MessageType.NOTIFY_FAIL){
-                System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
+
                 downloadResults.add(MessageType.NOTIFY_FAIL);
 
             }

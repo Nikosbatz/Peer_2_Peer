@@ -464,11 +464,15 @@ public class Peer {
             // Remove the selected file after the random choice
             files.remove(selectedFile);
 
-            ArrayList<PeerInfo> peersWithFile = requestFileDetails(selectedFile);
+            Message requestDetails = new Message(MessageType.DETAILS, selectedFile);
+            // Send the request to the tracker
+            oos.writeObject(requestDetails);
 
-            System.out.println("---------------ASDASD----");
+            // Get the response of the file details
+            Message response =(Message) ois.readObject();
 
             ArrayList<MessageType> downloadResults = new ArrayList<>();
+            ArrayList<PeerInfo> peersWithFile = response.getPeers();
 
             long startTime = System.currentTimeMillis();
 
@@ -478,7 +482,7 @@ public class Peer {
                     System.out.println("---------------ASDASD----");
 
                     // Start new Thread to Request file fragments from current peer
-                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
+                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
 
                 }
             }
@@ -491,7 +495,7 @@ public class Peer {
 
                 ArrayList<PeerInfo> selectedPeers = selectPeers(peerFragmentCount, 4,selectedFile);
                 for (PeerInfo peer : selectedPeers) {
-                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults)).start();
+                    new Thread(new DownloadRequestHandler(peer, selectedFile, this, downloadResults, response)).start();
                 }
             }
 

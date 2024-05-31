@@ -48,8 +48,7 @@ public class ColabDownloadHandler implements  Runnable{
     private void handleSingleRequest() throws IOException, ClassNotFoundException {
 
         Random random = new Random();
-        Socket socket = null;
-        Message msg = null;
+        Message msg;
 
         // Retrieve the only request
         msg = requests.getLast().msg;
@@ -66,7 +65,7 @@ public class ColabDownloadHandler implements  Runnable{
         }
 
         // Get a random fragment from those requested
-        String selectedFragment = fragments.get(random.nextInt(fragments.size())-1);
+        String selectedFragment = fragments.get(random.nextInt(fragments.size()));
 
         // For debugging
         System.out.println(selectedFragment);
@@ -80,7 +79,7 @@ public class ColabDownloadHandler implements  Runnable{
 
         // Request missing parts from the peer
         requestMissingParts(file);
-       //TODO filesrecievedfrom update it
+       //TODO filesRecievedFrom update it
 
 
     }
