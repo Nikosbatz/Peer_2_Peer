@@ -52,6 +52,15 @@ public class peerServer implements Runnable {
 
                         // Start the thread to initiate Collaborative download.
                         new Thread(new ColabDownloadHandler(requests, this.shared_dir, this.peer)).start();
+
+                        // Wait for ColabDownloadHandler to copy requests' objects references
+                        try {
+                            requests.wait();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                        //  -------------- Copy procedure ended --------------
+                        requests.clear();
                     }
                 }
 

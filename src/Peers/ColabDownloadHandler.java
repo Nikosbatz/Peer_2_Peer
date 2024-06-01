@@ -18,7 +18,15 @@ public class ColabDownloadHandler implements  Runnable{
     private String shared_dir;
    
     public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir, Peer peer){
-        this.requests = requests;
+
+
+        synchronized (requests) {
+            // Copy references of RequestInfo objects to another ArrayList
+            this.requests = new ArrayList<>();
+            this.requests.addAll(requests);
+            // -------- Copy end -----------
+            requests.notify();
+        }
         this.shared_dir = shared_dir;
         this.filePartsReceivedFrom = peer.filePartsReceivedFrom;
         this.peer = peer;
@@ -143,7 +151,7 @@ public class ColabDownloadHandler implements  Runnable{
         peer.getOos().writeObject(peerInfoRequest);
 
         Message response = (Message) peer.getOis().readObject();
-        return response.getPeers().get(0); // Ensure this returns the necessary peer info details
+        return response.getPeers().getFirst(); // Ensure this returns the necessary peer info details
     }
 
     private void initObjectStreams(RequestInfo request) throws IOException {
