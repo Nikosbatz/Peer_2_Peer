@@ -93,7 +93,9 @@ public class ColabDownloadHandler implements  Runnable{
     }
     private void handleMultipleRequests() throws IOException, InterruptedException, ClassNotFoundException {
         Random random = new Random();
-        Thread.sleep(200);
+
+        System.out.println("---------  MULTIPLE REQUESTS --------------");
+
 
         double decision = random.nextDouble();
         RequestInfo selectedRequestInfo;
@@ -151,7 +153,8 @@ public class ColabDownloadHandler implements  Runnable{
         peer.getOos().writeObject(peerInfoRequest);
 
         Message response = (Message) peer.getOis().readObject();
-        return response.getPeers().getFirst(); // Ensure this returns the necessary peer info details
+        System.out.println(response.getType());
+        return response.getPeers().getLast(); // Ensure this returns the necessary peer info details
     }
 
     private void initObjectStreams(RequestInfo request) throws IOException {
@@ -230,10 +233,13 @@ public class ColabDownloadHandler implements  Runnable{
     private ArrayList<String> requestFileFragments(String fileName) throws IOException, ClassNotFoundException {
 
         Message requestDetails = new Message(MessageType.DETAILS, fileName);
-        peer.getOos().writeObject(requestDetails);
+        Message response;
+        synchronized (peer.getOos()) {
 
+            peer.getOos().writeObject(requestDetails);
+            response = (Message) peer.getOis().readObject();
 
-        Message response =(Message) peer.getOis().readObject();
+        }
         return response.getFragments().get(fileName);
 
     }
@@ -241,7 +247,7 @@ public class ColabDownloadHandler implements  Runnable{
     private RequestInfo getFrequentRequest(ArrayList<RequestInfo> requests) {
         for (RequestInfo request : requests) {
             String fileName = request.msg.getContent();
-            int partNumber = Integer.parseInt(request.msg.getFragments().get(fileName).get(0).split("_")[1]); //  the fragment name format is 'fileName_partNumber'
+            int partNumber = Integer.parseInt(request.msg.getFragments().get(fileName).get(0).charAt()); //  the fragment name format is 'fileName_partNumber'
             String peerUsername = request.peerUsername;
 
             filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
@@ -266,7 +272,7 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
     private void updateFilePartsReceivedFrom(String fileName, String fragment, String peerUsername) {
-        int fragmentNumber = Integer.parseInt(fragment.split("_")[1]); // the fragment name format is 'fileName_partNumber'
+        int fragmentNumber = Integer.parseInt(String.valueOf(fragment.charAt(fragment.indexOf('_')+1))); // the fragment name format is 'fileName_partNumber'
         filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
         filePartsReceivedFrom.get(fileName).put(fragmentNumber, peerUsername);
     }

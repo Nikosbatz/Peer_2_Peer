@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.spec.RSAOtherPrimeInfo;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -55,40 +56,39 @@ public class DownloadRequestHandler implements Runnable{
             //------------- end of finding missing fragments -------------
 
 
+            if (!missingFragments.isEmpty()) {
 
-            // Construct download request based on the missing fragments of the file
-            Message msg = new Message(MessageType.DOWNLOAD_REQUEST, this.fileName);
-            HashMap<String, ArrayList<String>> fragments = new HashMap<>();
-            fragments.put(fileName,missingFragments);
-            msg.setFragments(fragments);
+                // Construct download request based on the missing fragments of the file
+                Message msg = new Message(MessageType.DOWNLOAD_REQUEST, this.fileName);
+                HashMap<String, ArrayList<String>> fragments = new HashMap<>();
+                fragments.put(fileName, missingFragments);
+                msg.setFragments(fragments);
 
-            // Send Download request to Peer
-            oos.writeObject(msg);
-            System.out.println("----------DOWNLOAD REQUEST HANDLER (Request)----------");
+                // Send Download request to Peer
+                oos.writeObject(msg);
+                Message reply = (Message) ois.readObject();
 
-            Message reply = (Message) ois.readObject();
-            System.out.println("----------DOWNLOAD REQUEST HANDLER (Response)----------");
 
-            if (reply.getType() == MessageType.FILE_RESPONSE){
-                Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\"+ self.getShared_dir());
-                Files.createDirectories(downloadPath);
-                // fileResponse.getContent contains the name of the file that the seeder sent
-                downloadPath = downloadPath.resolve(reply.getContent());
-                Files.write(downloadPath, reply.getFileContent());
-                System.out.println("File downloaded successfully to " + downloadPath.toString());
-                downloadResults.add(MessageType.NOTIFY_SUCCESS);
+                if (reply.getType() == MessageType.FILE_RESPONSE) {
+                    Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\" + self.getShared_dir());
+                    Files.createDirectories(downloadPath);
+                    // fileResponse.getContent contains the name of the file that the seeder sent
+                    downloadPath = downloadPath.resolve(reply.getContent());
+                    Files.write(downloadPath, reply.getFileContent());
+                    System.out.println("File downloaded successfully to " + downloadPath.toString());
+                    downloadResults.add(MessageType.NOTIFY_SUCCESS);
 
+                } else if (reply.getType() == MessageType.NOTIFY_FAIL) {
+
+                    downloadResults.add(MessageType.NOTIFY_FAIL);
+                    System.out.println("Message Type download request: " + reply.getType());
+                } else {
+                    System.out.println("Message Type download request: " + reply.getType());
+                }
             }
-            else if(reply.getType() == MessageType.NOTIFY_FAIL){
-
-                downloadResults.add(MessageType.NOTIFY_FAIL);
-
-            }
-
-
 
         } catch (IOException| ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
 
 

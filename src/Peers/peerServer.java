@@ -41,14 +41,12 @@ public class peerServer implements Runnable {
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
-                        long startTime = System.currentTimeMillis();
+                    }
+                    long startTime = System.currentTimeMillis();
 
-                        // Wait until 200 ms have passed
-                        while (true) {
-                            if (System.currentTimeMillis() - startTime >= 200) {
-                                break;
-                            }
-                        }
+                    while (System.currentTimeMillis() - startTime < 500){}
+
+                    synchronized (requests){
 
                         // Start the thread to initiate Collaborative download.
                         new Thread(new ColabDownloadHandler(requests, this.shared_dir, this.peer)).start();
@@ -63,8 +61,8 @@ public class peerServer implements Runnable {
                         requests.clear();
                     }
                 }
-
             });
+
             daemonThread.setDaemon(true);
             daemonThread.start();
             while (true) {
@@ -76,65 +74,6 @@ public class peerServer implements Runnable {
             System.out.println("Server is closed...");
         }
 
-    }
-
-    //TODO
-    //First implementation for the sake of seeder-serve method
-    class SeederHandler implements Runnable {
-        private Socket socket;
-        private String sharedDir;
-
-        public SeederHandler(Socket socket, String sharedDir) {
-            this.socket = socket;
-            this.sharedDir = sharedDir;
-        }
-
-        @Override
-        public void run() {
-            try (ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                 ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream())) {
-
-                List<Message> requests = new ArrayList<>();
-                long startTime = System.currentTimeMillis();
-
-                while (System.currentTimeMillis() - startTime < 200) {
-                    try {
-                        Object obj = ois.readObject();
-                        if (obj instanceof Message) {
-                            Message msg = (Message) obj;
-                            if (msg.getType() == MessageType.DOWNLOAD_REQUEST) {
-                                requests.add(msg);
-                            }
-                        }
-                    } catch (EOFException | SocketTimeoutException e) {
-                        break; // Stop waiting for requests if end of stream or timeout occurs
-                    }
-                }
-                //the seeder picks randomly which peer he will send one of the requested file fragments
-                if (!requests.isEmpty()) {
-                    Random random = new Random();
-                    Message selectedRequest = requests.get(random.nextInt(requests.size()));
-                    sendFilePiece(selectedRequest, oos);
-                }
-
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private void sendFilePiece(Message request, ObjectOutputStream oos) throws IOException {
-            String fileName = request.getContent();
-            Path filePath = Paths.get(sharedDir, fileName);
-            if (Files.exists(filePath)) {
-                byte[] fileContent = Files.readAllBytes(filePath);
-                Message response = new Message(MessageType.FILE_RESPONSE);
-                response.setFileContent(fileContent);
-                oos.writeObject(response);
-            } else {
-                Message response = new Message(MessageType.ERROR, "Requested file piece not found");
-                oos.writeObject(response);
-            }
-        }
     }
 }
 

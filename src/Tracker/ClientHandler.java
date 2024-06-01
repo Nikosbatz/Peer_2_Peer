@@ -94,21 +94,14 @@ class ClientHandler implements Runnable {
 
     private void getPeerInfoByUsername(Message msg, ObjectOutputStream oos) throws IOException {
         String username = msg.getContent();
-        PeerInfo peerInfo = PeerInfoByUsername(username);
+        PeerInfo peerInfo = peers.get(username);
         if (peerInfo != null) {
             oos.writeObject(new Message(MessageType.RESPONSE, peerInfo));
         } else {
             oos.writeObject(new Message(MessageType.ERROR, "Peer not found"));
         }
     }
-    public PeerInfo PeerInfoByUsername(String username) {
-        for(PeerInfo peer : connectedPeers.values()) {
-            if (peer.getUsername().equals(username)) {
-                return peer;
-            }
-        }
-        return null;
-    }
+
     private void registerPeer(Message msg, ObjectOutputStream oos) throws IOException {
 
         // handle registration form data
@@ -352,11 +345,14 @@ class ClientHandler implements Runnable {
         // If download was successful update seeder's values
         if (msg.getType() == MessageType.NOTIFY_SUCCESS){
 
+            String token = msg.getToken();
+            PeerInfo peer = connectedPeers.get(token);
+            peers.get(peer.getUsername()).getFiles().add(msg.getContent());
             // Update countDownloads of seeder
-            peers.get(msg.getUsername()).incCountDownloads();
+            peers.get(peer.getUsername()).incCountDownloads();
 
             // Update sharedFiles of the user that downloaded the file
-            connectedPeers.get(msg.getToken()).getFiles().add(msg.getContent());
+
         }
         else {
 

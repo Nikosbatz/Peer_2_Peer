@@ -21,9 +21,9 @@ public class Peer {
 
     private Boolean isFirstLogin = true;
 
-    private int port = 1113;
+    private int port = 1115;
 
-    private final String shared_dir = "shared_Directory2";
+    private final String shared_dir = "shared_Directory5";
     public static Boolean processRunning;
     //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
     // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
@@ -44,6 +44,9 @@ public class Peer {
         return  oos;
     }
     //Method to upadte the filePartsRecievedFrom
+
+
+    //TODO use it in the download section
     public void updateFilePartsReceivedFrom(String fileName,int partNumber,String peerUsername){
         //Ensure the file entry exists
         filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
@@ -487,12 +490,14 @@ public class Peer {
 
 
             // Send the request to the tracker
-            Message requestDetails = new Message(MessageType.DETAILS, selectedFile);
-            oos.writeObject(requestDetails);
+            Message requestDetails;
+            synchronized (oos) {
+                requestDetails = new Message(MessageType.DETAILS, selectedFile);
+                oos.writeObject(requestDetails);
 
-            // Get the response of the file details
-            response = (Message) ois.readObject();
-
+                // Get the response of the file details
+                response = (Message) ois.readObject();
+            }
 
             System.out.println(response.getPeers() + "," + response.getFragments() + "," + response.getType());
             ArrayList<PeerInfo> peersWithFile = response.getPeers();
@@ -505,7 +510,6 @@ public class Peer {
             ArrayList<String> missingFragments = getMissingFragments(fileFragments);
 
             while (!missingFragments.isEmpty()) {
-                System.out.println("Missing fragments: " + missingFragments.size());
 
                 //TODO implement requests TIMER
                 long startTime = System.currentTimeMillis();
@@ -531,12 +535,28 @@ public class Peer {
                 }
 
                 // Timer
-                while(System.currentTimeMillis() - startTime < 1000){}
+                while(System.currentTimeMillis() - startTime < 500){}
 
                 missingFragments = getMissingFragments(fileFragments);
+
+                // Reload peersWithFile
+                synchronized (oos) {
+                    requestDetails = new Message(MessageType.DETAILS, selectedFile);
+                    oos.writeObject(requestDetails);
+
+                    response = (Message) ois.readObject();
+                    peersWithFile = response.getPeers();
+                    // -------- Reload end ----------
+                }
             }
 
-            // Wait for some time before sending the next set of requests
+
+            //assembleFile(selectedFile);
+            msg = new Message(MessageType.NOTIFY_SUCCESS, selectedFile);
+            msg.setToken(this.token);
+            oos.writeObject(msg);
+            oos.flush();
+
         }
 
     }
@@ -553,6 +573,10 @@ public class Peer {
         }
         return missingFragments;
 
+    }
+
+    private void assembleFile(String fileName){
+        //TODO assemble the downloaded file
     }
 
 
