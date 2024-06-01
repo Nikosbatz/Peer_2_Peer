@@ -63,6 +63,7 @@ public class DownloadRequestHandler implements Runnable{
                 HashMap<String, ArrayList<String>> fragments = new HashMap<>();
                 fragments.put(fileName, missingFragments);
                 msg.setFragments(fragments);
+                msg.setUsername(self.getUsername());
 
                 // Send Download request to Peer
                 oos.writeObject(msg);
@@ -76,12 +77,11 @@ public class DownloadRequestHandler implements Runnable{
                     downloadPath = downloadPath.resolve(reply.getContent());
                     Files.write(downloadPath, reply.getFileContent());
                     System.out.println("File downloaded successfully to " + downloadPath.toString());
-                    downloadResults.add(MessageType.NOTIFY_SUCCESS);
+                    self.updateFilePartsReceivedFrom(fileName, peer.getUsername());
 
                 } else if (reply.getType() == MessageType.NOTIFY_FAIL) {
 
-                    downloadResults.add(MessageType.NOTIFY_FAIL);
-                    System.out.println("Message Type download request: " + reply.getType());
+                    System.out.println("Request was dropped");
                 } else {
                     System.out.println("Message Type download request: " + reply.getType());
                 }

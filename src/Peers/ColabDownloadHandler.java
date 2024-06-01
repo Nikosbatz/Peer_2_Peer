@@ -4,21 +4,22 @@ import Tracker.PeerInfo;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ColabDownloadHandler implements  Runnable{
+public class ColabDownloadHandler implements  Runnable {
 
-    private final HashMap<String, HashMap<Integer, String>> filePartsReceivedFrom;
+    private final ConcurrentHashMap<String, ArrayList<String>> filePartsReceivedFrom;
     private ArrayList<RequestInfo> requests;
     private ObjectOutputStream oos;
     private Peer peer;
     private ObjectInputStream ois;
     private String shared_dir;
-   
-    public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir, Peer peer){
 
+    public ColabDownloadHandler(ArrayList<RequestInfo> requests, String shared_dir, Peer peer) {
 
         synchronized (requests) {
             // Copy references of RequestInfo objects to another ArrayList
@@ -35,14 +36,13 @@ public class ColabDownloadHandler implements  Runnable{
     @Override
     public void run() {
 
-        if (this.requests.size() == 1){
+        if (this.requests.size() == 1) {
             try {
                 handleSingleRequest();
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
-        }
-        else {
+        } else {
             try {
                 handleMultipleRequests();
             } catch (IOException | InterruptedException | ClassNotFoundException e) {
@@ -67,7 +67,7 @@ public class ColabDownloadHandler implements  Runnable{
         String file = "";
 
         // Retrieve the only pair from the hashmap
-        for (String key: msg.getFragments().keySet()){
+        for (String key : msg.getFragments().keySet()) {
             fragments = msg.getFragments().get(key);
             file = key;
         }
@@ -86,11 +86,10 @@ public class ColabDownloadHandler implements  Runnable{
         initUpload(selectedFragment);
 
         // Request missing parts from the peer
-        requestMissingParts(file);
-       //TODO filesRecievedFrom update it
-
+        requestMissingParts(file, requests.getLast().peerUsername);
 
     }
+
     private void handleMultipleRequests() throws IOException, InterruptedException, ClassNotFoundException {
         Random random = new Random();
 
@@ -100,31 +99,56 @@ public class ColabDownloadHandler implements  Runnable{
         double decision = random.nextDouble();
         RequestInfo selectedRequestInfo;
 
+        System.out.println("Decision: " + decision);
+
         if (decision <= 0.2) {
             selectedRequestInfo = requests.get(random.nextInt(requests.size()));
+            System.out.println("Random request");
         } else if (decision <= 0.6) {
             selectedRequestInfo = getBestRequest(requests);
+            System.out.println("Best Request");
         } else {
             selectedRequestInfo = getFrequentRequest(requests);
+            System.out.println("Frequent Request");
         }
+
+        System.out.println("Request reference: " + selectedRequestInfo);
 
         initObjectStreams(selectedRequestInfo);
 
-        String selectedFragment = selectedRequestInfo.msg.getFragments()
+
+
+        /*String selectedFragment = selectedRequestInfo.msg.getFragments()
                 .get(selectedRequestInfo.msg.getContent())
-                .get(random.nextInt(selectedRequestInfo.msg.getFragments().get(selectedRequestInfo.msg.getContent()).size()));
+                .get(random.nextInt(selectedRequestInfo.msg.getFragments().get(selectedRequestInfo.msg.getContent()).size()));*/
+
+
+        // Fragments of the file that the client requests
+        ArrayList<String> fragments = null;
+        String file = "";
+
+        // Retrieve the only pair from the hashmap
+        Message msg = selectedRequestInfo.msg;
+        for (String key : msg.getFragments().keySet()) {
+            fragments = msg.getFragments().get(key);
+            file = key;
+        }
+
+        // Get a random fragment from those requested
+        String selectedFragment = fragments.get(random.nextInt(fragments.size()));
 
         initUpload(selectedFragment);
-        // Update filePartsReceivedFrom
-        updateFilePartsReceivedFrom(selectedRequestInfo.msg.getContent(), selectedFragment, selectedRequestInfo.peerUsername);
 
+        requestMissingParts(file, selectedRequestInfo.peerUsername);
+
+
+        requests.remove(selectedRequestInfo);
         for (RequestInfo requestInfo : requests) {
             if (!requestInfo.peerUsername.equals(selectedRequestInfo.peerUsername)) {
-                sendNegativeResponse();
+                sendNegativeResponse(requestInfo);
             }
         }
 
-        requestMissingParts(selectedRequestInfo.msg.getContent());
     }
 
     //calculates the best request based on the peer's response time and a combined score of downloads and failures.
@@ -186,95 +210,100 @@ public class ColabDownloadHandler implements  Runnable{
     }
 
 
-    private void sendNegativeResponse() throws IOException {
-        Message response= new Message(MessageType.ERROR,"Requested file not available.");
-        oos.writeObject(response);
+    private void sendNegativeResponse(RequestInfo request) throws IOException {
+        Message response = new Message(MessageType.NOTIFY_FAIL, "The Request was dropped");
+        request.oos.writeObject(response);
     }
 
-    private void requestMissingParts(String fileName) throws IOException, ClassNotFoundException {
+    private void requestMissingParts(String fileName, String username) throws IOException, ClassNotFoundException {
         ArrayList<String> missingFragments = getMissingParts(fileName);
         System.out.println(missingFragments.size());
+
         if (!missingFragments.isEmpty()) {
 
             Message request = new Message(MessageType.DOWNLOAD_REQUEST, fileName);
             HashMap<String, ArrayList<String>> fragments = new HashMap<>();
             fragments.put(fileName, missingFragments);
             request.setFragments(fragments);
+            request.setUsername(peer.getUsername());
             oos.writeObject(request);
-        }
-        else {
-            System.out.println("THERE ARE NO MISSING FRAGMENTS");
-        }
 
-    }
-    private ArrayList<String> getMissingParts(String fileName) throws IOException, ClassNotFoundException {
+            Message reply = (Message) ois.readObject();
+            if (reply.getType() == MessageType.FILE_RESPONSE) {
+                Path downloadPath = Paths.get(System.getProperty("user.dir"), "src\\" + peer.getShared_dir());
+                Files.createDirectories(downloadPath);
+                // fileResponse.getContent contains the name of the file that the seeder sent
+                downloadPath = downloadPath.resolve(reply.getContent());
+                Files.write(downloadPath, reply.getFileContent());
+                System.out.println("File downloaded successfully to " + downloadPath.toString());
+                peer.updateFilePartsReceivedFrom(fileName, username);
 
-
-        ArrayList<String> totalFragments;
-
-        totalFragments = requestFileFragments(fileName);
-
-        ArrayList<String> files = peer.getSharedDirectoryInfo();
-        ArrayList<String> missingFragments = new ArrayList<>();
-
-
-        for (String fragment: totalFragments){
-            if (!files.contains(fragment)){
-                missingFragments.add(fragment);
+            } else {
+                System.out.println("THERE ARE NO MISSING FRAGMENTS");
             }
+
         }
-
-        return missingFragments;
-
-
     }
 
+        private ArrayList<String> getMissingParts (String fileName) throws IOException, ClassNotFoundException {
 
-    private ArrayList<String> requestFileFragments(String fileName) throws IOException, ClassNotFoundException {
 
-        Message requestDetails = new Message(MessageType.DETAILS, fileName);
-        Message response;
-        synchronized (peer.getOos()) {
+            ArrayList<String> totalFragments;
 
-            peer.getOos().writeObject(requestDetails);
-            response = (Message) peer.getOis().readObject();
+            totalFragments = requestFileFragments(fileName);
 
-        }
-        return response.getFragments().get(fileName);
+            ArrayList<String> files = peer.getSharedDirectoryInfo();
+            ArrayList<String> missingFragments = new ArrayList<>();
 
-    }
 
-    private RequestInfo getFrequentRequest(ArrayList<RequestInfo> requests) {
-        for (RequestInfo request : requests) {
-            String fileName = request.msg.getContent();
-            int partNumber = Integer.parseInt(request.msg.getFragments().get(fileName).get(0).charAt()); //  the fragment name format is 'fileName_partNumber'
-            String peerUsername = request.peerUsername;
-
-            filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
-            filePartsReceivedFrom.get(fileName).put(partNumber, peerUsername);
-        }
-
-        HashMap<String, Integer> requestCount = new HashMap<>();
-        for (HashMap<Integer, String> parts : peer.filePartsReceivedFrom.values()) {
-            for (String peerUsername : parts.values()) {
-                requestCount.put(peerUsername, requestCount.getOrDefault(peerUsername, 0) + 1);
+            for (String fragment : totalFragments) {
+                if (!files.contains(fragment)) {
+                    missingFragments.add(fragment);
+                }
             }
+
+            return missingFragments;
+
+
         }
 
-        String frequentPeer = Collections.max(requestCount.entrySet(), Map.Entry.comparingByValue()).getKey();
-        for (RequestInfo request : requests) {
-            if (request.peerUsername.equals(frequentPeer)) {
-                return request;
+
+        private ArrayList<String> requestFileFragments (String fileName) throws IOException, ClassNotFoundException {
+
+            Message requestDetails = new Message(MessageType.DETAILS, fileName);
+            Message response;
+            synchronized (peer.getOos()) {
+
+                peer.getOos().writeObject(requestDetails);
+                response = (Message) peer.getOis().readObject();
+
             }
+            return response.getFragments().get(fileName);
+
         }
 
-        return requests.get(0); // Fallback to the first request if no frequent peer is found
-    }
+        private RequestInfo getFrequentRequest (ArrayList < RequestInfo > requests) throws IOException, ClassNotFoundException {
 
-    private void updateFilePartsReceivedFrom(String fileName, String fragment, String peerUsername) {
-        int fragmentNumber = Integer.parseInt(String.valueOf(fragment.charAt(fragment.indexOf('_')+1))); // the fragment name format is 'fileName_partNumber'
-        filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
-        filePartsReceivedFrom.get(fileName).put(fragmentNumber, peerUsername);
-    }
+            int maxDownloads = 0;
+            RequestInfo maxRequest = null;
+
+            for (RequestInfo request : requests) {
+                String username = request.peerUsername;
+                if (peer.filePartsReceivedFrom.containsKey(username) && peer.filePartsReceivedFrom.get(username).size() > maxDownloads) {
+                    maxDownloads = peer.filePartsReceivedFrom.get(username).size();
+                    maxRequest = request;
+                }
+
+            }
+            if (maxRequest == null) {
+                return getBestRequest(requests);
+            } else {
+                return maxRequest;
+            }
+
+        }
+
+
+
 
 }

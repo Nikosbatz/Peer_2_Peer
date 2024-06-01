@@ -285,7 +285,6 @@ class ClientHandler implements Runnable {
 
                 // Checks if this peer is active before inserting the object in the peersWithFile
                 if (checkActive(peer)) {
-
                     peersWithFile.add(peer);
                 }
             }
@@ -295,7 +294,6 @@ class ClientHandler implements Runnable {
         HashMap<String, ArrayList<String>> totalFragments = new HashMap<>();
         for (PeerInfo peer : peers.values()) {
             if (peer.getFiles().contains(requestedFile) && peer.getIsFileInitSeeder().containsKey(requestedFile)) {
-                System.out.println("----------------------");
                 totalFragments.put(requestedFile, peer.getFragments().get(requestedFile));
             }
         }
@@ -306,9 +304,7 @@ class ClientHandler implements Runnable {
             // Respond with the peers that have the file requested
             Message response = new Message(MessageType.RESPONSE, requestedFile);
             response.setFragments(totalFragments);
-            System.out.println(totalFragments.get(requestedFile).size());
             response.setPeers(peersWithFile);
-            System.out.println(peersWithFile.getLast().getIsFileInitSeeder().get(requestedFile));
             oos.writeObject(response);
         }
     }

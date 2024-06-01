@@ -44,7 +44,7 @@ public class peerServer implements Runnable {
                     }
                     long startTime = System.currentTimeMillis();
 
-                    while (System.currentTimeMillis() - startTime < 500){}
+                    while (System.currentTimeMillis() - startTime < 200){}
 
                     synchronized (requests){
 

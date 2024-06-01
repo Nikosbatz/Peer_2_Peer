@@ -9,12 +9,14 @@ import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class Peer {
     private Socket socket;
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
+    private String username;
     private String token;
     private Thread serverThread;
     private ServerSocket serverSocket;
@@ -28,12 +30,15 @@ public class Peer {
     //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
     // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
     //and the peer from whom they were received
-    public HashMap<String, HashMap<Integer, String>> filePartsReceivedFrom;
+
+    // (Key = username, value = file parts)
+    public ConcurrentHashMap<String, ArrayList<String>> filePartsReceivedFrom;
 
     public Peer(String trackerHost, int trackerPort) throws IOException {
         socket = new Socket(trackerHost, trackerPort);
         oos = new ObjectOutputStream(socket.getOutputStream());
         ois = new ObjectInputStream(socket.getInputStream());
+        this.filePartsReceivedFrom = new ConcurrentHashMap<>();
 
     }
 
@@ -47,12 +52,7 @@ public class Peer {
 
 
     //TODO use it in the download section
-    public void updateFilePartsReceivedFrom(String fileName,int partNumber,String peerUsername){
-        //Ensure the file entry exists
-        filePartsReceivedFrom.putIfAbsent(fileName, new HashMap<>());
-        // Update the part number with the username of the peer from whom it was received
-        filePartsReceivedFrom.get(fileName).put(partNumber, peerUsername);
-    }
+
 
 
     ArrayList<String> getSharedDirectoryInfo() {
@@ -104,6 +104,7 @@ public class Peer {
         if (response instanceof Message) {
             Message responseMessage = (Message) response;
             if (responseMessage.getType() == MessageType.LOGIN_SUCCESS) {
+                this.username = username;
                 // Extract token
                 String[] details = responseMessage.getContent().split(",");
                 this.token = details[2].split(":")[1].trim();  //  "IP Address: x.x.x.x, Port: xxxx, Token: xxx"
@@ -506,7 +507,6 @@ public class Peer {
 
 
 
-
             ArrayList<String> missingFragments = getMissingFragments(fileFragments);
 
             while (!missingFragments.isEmpty()) {
@@ -573,6 +573,14 @@ public class Peer {
         }
         return missingFragments;
 
+    }
+
+    public void updateFilePartsReceivedFrom(String fileName, String peerUsername){
+
+        if (!filePartsReceivedFrom.containsKey(peerUsername)){
+            filePartsReceivedFrom.put(peerUsername, new ArrayList<>());
+        }
+        filePartsReceivedFrom.get(peerUsername).add(fileName);
     }
 
     private void assembleFile(String fileName){
@@ -838,5 +846,11 @@ public class Peer {
     }
 
 
+    public String getUsername() {
+        return username;
+    }
 
+    public void setUsername(String username) {
+        this.username = username;
+    }
 }

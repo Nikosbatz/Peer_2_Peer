@@ -31,6 +31,7 @@ public class ClientHandler implements Runnable {
             Object msg = is.readObject();
             if (msg instanceof Message) {
 
+                System.out.println("Message Type: " + ((Message) msg).getType());
                 switch (((Message) msg).getType()) {
                     case CHECK_ACTIVE:
                         oos.writeObject(new Message(MessageType.ACTIVE_RESPONSE));
@@ -38,8 +39,6 @@ public class ClientHandler implements Runnable {
 
                     case DOWNLOAD_REQUEST:
                         synchronized (requests) {
-
-                            //TODO check if this username is correct being here
                             requests.add(new RequestInfo((Message) msg, oos, is, ((Message) msg).getUsername()));
                             requests.notify();
                         }
