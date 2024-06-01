@@ -23,9 +23,9 @@ public class Peer {
 
     private Boolean isFirstLogin = true;
 
-    private int port = 1115;
+    private int port;
 
-    private final String shared_dir = "shared_Directory5";
+    private final String shared_dir;
     public static Boolean processRunning;
     //the outer part uses the filename that is being downloaded as the key ,the inner one uses the part number as the key
     // and the username of the peer who sent that part as the value,this is used to keep track of the parts of the file
@@ -34,7 +34,9 @@ public class Peer {
     // (Key = username, value = file parts)
     public ConcurrentHashMap<String, ArrayList<String>> filePartsReceivedFrom;
 
-    public Peer(String trackerHost, int trackerPort) throws IOException {
+    public Peer(int port , String shared_dir,String trackerHost, int trackerPort) throws IOException {
+        this.port = port;
+        this.shared_dir = shared_dir;
         socket = new Socket(trackerHost, trackerPort);
         oos = new ObjectOutputStream(socket.getOutputStream());
         ois = new ObjectInputStream(socket.getInputStream());
@@ -809,12 +811,18 @@ public class Peer {
 
     }
     public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.println("Usage: java Peers.Peer <tracker_host> <port> <shared_dir>");
+            return;
+        }
+        String trackerHost = args[0];
+        int port = Integer.parseInt(args[1]);
+        String sharedDir = args[2];
+
         try {
-            Peer peer = new Peer("localhost", 1111);
+            Peer peer = new Peer(port,sharedDir,trackerHost, 1111);
 
             // Start a PeerServer where Peer accepts requests from other Peers or the Tracker.
-
-
             // Defines the Files that Peer wants to share
             peer.getSharedDirectoryInfo();
 
