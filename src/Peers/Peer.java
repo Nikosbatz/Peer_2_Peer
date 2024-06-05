@@ -767,66 +767,15 @@ public class Peer {
             }
         }
 
-        // Optional: Delete fragment files after merging
-        for (int i = 1; ; i++) {
-            File partFile = new File(shared_dir_path, String.format("%s.part_%d.txt", fileName, i));
-            if (partFile.exists()) {
-                partFile.delete();
-            } else {
-                break;
-            }
-        }
-
         System.out.println("File merged successfully: " + mergedFilePath);
 
         // Mark this peer as seeder for the merged file
-        notifyTrackerSeederStatus(fileName);
+        notifyTrackerSeederStatus();
 
         // Execute the select functionality
         select();
     }
 
-    // Method to notify the tracker that this peer is now a seeder for the given file
-    private void notifyTrackerSeederStatus(String fileName) throws IOException {
-        // Construct the message to inform the tracker
-        String ip = getIp();
-        int port = getPort();
-        Message seederInfoMessage = new Message(MessageType.INFORM, ip + "," + port);
-        seederInfoMessage.setToken(this.token);
-
-        // Get the shared directory info
-        ArrayList<String> files = getSharedDirectoryInfo();
-
-        // HashMap <name of file, list of its fragments>
-        HashMap<String, ArrayList<String>> fragments = new HashMap<>();
-        ArrayList<String> tempFragments;
-
-        // Partition each file and organize its fragments in the fragments HashMap
-        for (String file : files) {
-            if (!file.contains("part_")) {
-                partitionFile(file);
-                // the peer has all pieces of the file, indicating seeder status
-                seederInfoMessage.addFileDetail(file, true);
-                tempFragments = new ArrayList<>();
-
-                // Iterate through the shared_dir files
-                for (String tempFile : getSharedDirectoryInfo()) {
-                    // If tempFile is part of the current file add it to the fragments
-                    if (tempFile.contains("part_") && tempFile.contains(file.substring(0, file.lastIndexOf('.')))) {
-                        tempFragments.add(tempFile);
-                    }
-                }
-                // Insert the name of file and the fragments that assemble it
-                fragments.put(file, tempFragments);
-            }
-        }
-        // Set Message parameters
-        seederInfoMessage.setFiles(files);
-        seederInfoMessage.setFragments(fragments);
-
-        // Send the message to the tracker
-        oos.writeObject(seederInfoMessage);
-    }
 
 
     public void showMenu () throws IOException, ClassNotFoundException, InterruptedException {
