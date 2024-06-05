@@ -463,15 +463,12 @@ public class Peer {
 
         while(!files.isEmpty()) {
 
-            System.out.println("-------------------");
-
             // Randomly select a file
             String selectedFile = files.get(random.nextInt(files.size()));
 
             // Request The total fragments number of this file from the Tracker
             Message msg = new Message(MessageType.TOTAL_FRAGMENTS, selectedFile);
             oos.writeObject(msg);
-
 
             // Wait for the reply
             Message response = (Message) ois.readObject();
@@ -507,8 +504,6 @@ public class Peer {
             ArrayList<String> fileFragments = response.getFragments().get(selectedFile);
             ArrayList<MessageType> downloadResults = new ArrayList<>();
 
-
-
             ArrayList<String> missingFragments = getMissingFragments(fileFragments);
 
             while (!missingFragments.isEmpty()) {
@@ -536,9 +531,10 @@ public class Peer {
                     }
                 }
 
-                // Timer
+                // Timer for request sending
                 while(System.currentTimeMillis() - startTime < 500){}
 
+                // Needed for while condition
                 missingFragments = getMissingFragments(fileFragments);
 
                 // Reload peersWithFile
@@ -552,15 +548,15 @@ public class Peer {
                 }
             }
 
+            // Merge fragments to assemble the file
+            mergeFileFragments(selectedFile);
 
-            //assembleFile(selectedFile);
+            // Notify Tracker that this Peer can now SEED current file
             msg = new Message(MessageType.NOTIFY_SUCCESS, selectedFile);
             msg.setToken(this.token);
             oos.writeObject(msg);
             oos.flush();
-
         }
-
     }
 
     private ArrayList<String> getMissingFragments (ArrayList<String> fileFragments) throws IOException, ClassNotFoundException {
@@ -729,13 +725,7 @@ public class Peer {
 
         return missingFragments;
     }
-    // Method to check if all parts of a file have been received
-    public boolean checkAllPartsReceived(String fileName, int totalParts) {
-        if (!filePartsReceivedFrom.containsKey(fileName)) {
-            return false;
-        }
-        return filePartsReceivedFrom.get(fileName).size() == totalParts;
-    }
+
     // Method to merge file fragments into a complete file
     public void mergeFileFragments(String fileName) throws IOException, ClassNotFoundException {
         // Path for this peer's shared_directory
@@ -750,10 +740,14 @@ public class Peer {
         try (FileOutputStream fos = new FileOutputStream(mergedFilePath);
              BufferedOutputStream mergingStream = new BufferedOutputStream(fos)) {
 
+            String fileNameNoExt;
+            int dotIndex = fileName.lastIndexOf('.');
+            fileNameNoExt = fileName.substring(0,dotIndex);
+
             // Get the list of fragment files
             List<File> fragments = new ArrayList<>();
             for (int i = 1; ; i++) {
-                File partFile = new File(shared_dir_path, String.format("%s.part_%d.txt", fileName, i));
+                File partFile = new File(shared_dir_path, String.format("%s.part_%d.txt", fileNameNoExt, i));
                 if (partFile.exists()) {
                     fragments.add(partFile);
                 } else {
@@ -768,12 +762,6 @@ public class Peer {
         }
 
         System.out.println("File merged successfully: " + mergedFilePath);
-
-        // Mark this peer as seeder for the merged file
-        notifyTrackerSeederStatus();
-
-        // Execute the select functionality
-        select();
     }
 
 

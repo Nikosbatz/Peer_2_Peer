@@ -78,9 +78,7 @@ public class DownloadRequestHandler implements Runnable{
                     Files.write(downloadPath, reply.getFileContent());
                     System.out.println("File downloaded successfully to " + downloadPath.toString());
                     self.updateFilePartsReceivedFrom(fileName, peer.getUsername());
-                    // Check if all parts are downloaded and assemble the file
-                    if (self.checkAllPartsReceived(fileName, totalFragments.size())) {
-                        self.mergeFileFragments(fileName);}
+
                 } else if (reply.getType() == MessageType.NOTIFY_FAIL) {
 
                     System.out.println("Request was dropped");
@@ -90,7 +88,7 @@ public class DownloadRequestHandler implements Runnable{
             }
 
         } catch (IOException| ClassNotFoundException e) {
-            e.printStackTrace();
+
         }
 
 

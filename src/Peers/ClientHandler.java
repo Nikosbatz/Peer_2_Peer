@@ -31,7 +31,6 @@ public class ClientHandler implements Runnable {
             Object msg = is.readObject();
             if (msg instanceof Message) {
 
-                System.out.println("Message Type: " + ((Message) msg).getType());
                 switch (((Message) msg).getType()) {
                     case CHECK_ACTIVE:
                         oos.writeObject(new Message(MessageType.ACTIVE_RESPONSE));
